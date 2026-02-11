@@ -2,9 +2,9 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 
 
-def success_response(message: str = "success", data=None):
+def success_response(code=200, message: str = "success", data=None):
     content = {
-        "code": 200,
+        "code": code,
         "message": message,
         "data": data
     }

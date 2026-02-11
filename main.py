@@ -1,12 +1,36 @@
-from fastapi import FastAPI
+import os
+from datetime import datetime
+
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from routers import users, health
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse, JSONResponse
+from routers import auth, api
+from config import configer
+from service.database import async_engine
+from models.base import Base
+from contextlib import asynccontextmanager
 from utils.exception_handlers import register_exception_handlers
+from utils import logger
+
+VERSION = "1.0.0"
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 启动时：创建表
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata_.create_all)
+    yield
+    # 关闭时：清理资源
+    await async_engine.dispose()
+
 
 app = FastAPI(
     title="Notex API",
     version="1.0.0",
-    description="A privacy-first, open-source alternative to NotebookLM"
+    description="A privacy-first, open-source alternative to NotebookLM",
+    lifespan=lifespan
 )
 
 # 注册异常处理器
@@ -21,15 +45,25 @@ app.add_middleware(
     allow_headers=["*"],     # 允许的请求头
 )
 
-@app.get("/")
+frontend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "frontend"))
+static_path = os.path.join(frontend_path, "static")
+if os.path.exists(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
+
+
+@app.get("/", response_class=HTMLResponse)
 async def root():
-    return {"message": "Hello World"}
+    index_path = os.path.join(frontend_path, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path, headers={"Cache-Control": "no-cache"})
+    return HTMLResponse(content="<h1>Notex Frontend not found</h1>")
+
 
 # 挂载路由/注册路由
-app.include_router(health.router)
-app.include_router(users.router)
+app.include_router(api.router)
+app.include_router(auth.router)
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host=settings.SERVER_HOST, port=int(settings.SERVER_PORT), reload=True)
+    uvicorn.run("main:app", host=configer.server_host, port=int(configer.server_port), reload=True)

@@ -1,14 +1,12 @@
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession, create_async_engine
-
-# 数据库URL
-ASYNC_DATABASE_URL = "mysql+aiomysql://notex:Sy88383979@10.175.205.188:3306/notex_app?charset=utf8mb4"
+from config import configer
 
 # 创建异步引擎
 async_engine = create_async_engine(
-    ASYNC_DATABASE_URL,
-    echo=True,  # 可选：输出SQL日志
-    pool_size=10,  # 设置连接池中保持的持久连接数
-    max_overflow=20  # 设置连接池允许创建的额外连接数
+    url=configer.mysql_url,
+    echo=True,                      # 可选：输出SQL日志
+    pool_size=10,                   # 设置连接池中保持的持久连接数
+    max_overflow=20                 # 设置连接池允许创建的额外连接数
 )
 
 # 创建异步会话工厂
@@ -20,7 +18,7 @@ AsyncSessionLocal = async_sessionmaker(
 
 
 # 依赖项，用于获取数据库会话
-async def get_db():
+async def get_session():
     async with AsyncSessionLocal() as session:
         try:
             yield session
