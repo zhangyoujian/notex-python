@@ -8,3 +8,10 @@ class NotebookRequest(BaseModel):
     description: str
     metadata_: str
 
+
+class SourceRequest(BaseModel):
+    name: str
+    type: str
+    url: str
+    content: str
+    metadata_: str

@@ -28,6 +28,7 @@ async def register(user_data: UserRequest, db: AsyncSession = Depends(get_sessio
     existing_user = await db_get_user_by_email(db, user_data.email)
     if existing_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="用户已存在")
+
     user = await db_create_user(db, user_data)
     token = await db_create_token(db, user.id)
     response_data = UserAuthResponse(token=token, user=UserInfoResponse.model_validate(user))

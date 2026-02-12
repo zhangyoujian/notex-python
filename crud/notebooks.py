@@ -20,8 +20,8 @@ async def db_get_notebook_by_id(db: AsyncSession, notebook_id: str):
 
 
 async def list_notebook_by_user_id(db: AsyncSession, user_id: int,  skip: int = 0, limit: int = 10000):
-    stmt = select(Notebook).where(Notebook.user_id == user_id).order_by(desc(Notebook.updated_at)).offset(skip).limit(limit)
-    result = await db.execute(stmt)
+    query = select(Notebook).where(Notebook.user_id == user_id).order_by(desc(Notebook.updated_at)).offset(skip).limit(limit)
+    result = await db.execute(query)
     return result.scalars().all()
 
 

@@ -41,4 +41,4 @@ async def health_check():
 
 @router.get("/config")
 async def get_config():
-    return success_response(data={})
+    return success_response(message="获取服务器配置信息成功", data={})

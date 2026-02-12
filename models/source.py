@@ -27,3 +27,21 @@ class Source(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     metadata_: Mapped[Optional[str]] = mapped_column("metadata", Text, nullable=True)
     notebook: Mapped["Notebook"] = relationship("Notebook", back_populates="sources")
+
+    @property
+    def metadata_dict(self) -> Optional[dict]:
+        """获取解析后的metadata字典"""
+        if self.metadata_ is None:
+            return {}
+        try:
+            return json.loads(self.metadata_)
+        except (json.JSONDecodeError, TypeError):
+            return None
+
+    @metadata_dict.setter
+    def metadata_dict(self, value: Optional[dict]):
+        """设置metadata字典，自动转换为JSON字符串"""
+        if value is None:
+            self.metadata_ = ""
+        else:
+            self.metadata_ = json.dumps(value, ensure_ascii=False)

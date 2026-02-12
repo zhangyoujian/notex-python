@@ -7,7 +7,7 @@ from models.source import Source
 from utils import logger
 
 
-async def db_create_notebook(db: AsyncSession,
+async def db_create_source(db: AsyncSession,
                              notebook_id: str,
                              name: str,
                              type_: str,

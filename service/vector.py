@@ -23,6 +23,12 @@ class VectorService:
         )
         return ids
 
+    def extract_from_url(self, url: str):
+        pass
+
+    def ingest_text(self, notebook_id: str, name: str, content: str):
+        pass
+
     def search(self, query: str, notebook_id: str, limit: int = 5) -> List[Dict[str, Any]]:
         results = self.collection.query(
             query_texts=[query],
