@@ -15,15 +15,15 @@ from utils import logger
 VERSION = "1.0.0"
 
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 启动时：创建表
     async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata_.create_all)
-        await vector_store.initialize()
+        await conn.run_sync(Base.metadata.create_all)
+        vector_store.initialize()
     yield
     # 关闭时：清理资源
-    await vector_store.close()
     await async_engine.dispose()
 
 

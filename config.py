@@ -23,6 +23,8 @@ class Config(BaseSettings):
 
     # embedding模型设置
     embedding_model: str = Field(default="text-embedding-3-small", env="EMBEDDING_MODEL")
+    embedding_model_url: str = Field(default="http://localhost:8001/v1", env="EMBEDDING_MODEL_URL")
+
 
     google_api_key: Optional[str] = Field(default=None, env="GOOGLE_API_KEY")
 

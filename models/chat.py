@@ -15,7 +15,6 @@ class ChatMessage(Base):
     # 添加索引以提高查询性能
     __table_args__ = (
         # 角色的索引，用于按角色筛选消息
-        Index('idx_chat_message_role', 'role'),
         # 创建时间的索引，用于获取最新消息
         Index('idx_chat_message_created', 'created_at'),
     )

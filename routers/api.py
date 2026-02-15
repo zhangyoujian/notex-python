@@ -109,13 +109,13 @@ async def upload_file(file: UploadFile = File(...),
                               0,
                               json.dumps(metadata_))
 
-    stats = await vector_service.get_stats()
+    stats = vector_service.get_stats()
 
     total_docs_before = stats.total_documents
 
-    await vector_service.ingest_text(notebook_id, source.name, source.content)
+    vector_service.ingest_text(notebook_id, source.name, source.content)
 
-    stats = await vector_service.get_stats()
+    stats = vector_service.get_stats()
 
     chunk_count = stats.total_documents - total_docs_before
 

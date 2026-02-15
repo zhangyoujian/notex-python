@@ -5,7 +5,6 @@ import json
 
 from schemas.notebook import NotebookRequest, SourceRequest, NoteRequest
 from service.database import get_session
-from service.vector import get_vector_service
 from models import Notebook, User, Note
 from crud.notebooks import *
 from crud.source import *

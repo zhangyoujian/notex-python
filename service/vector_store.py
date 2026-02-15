@@ -3,9 +3,10 @@ import os
 import aiofiles
 import asyncio
 import chromadb
-from chromadb.api.async_api import AsyncCollection, AsyncClientAPI
+from chromadb.api import Collection, ClientAPI
 from chromadb.config import Settings
-from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction,OpenAIEmbeddingFunction
+from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
@@ -13,6 +14,7 @@ from typing import List, Dict, Any
 from config import configer
 from utils import logger
 import uuid
+
 
 
 @dataclass
@@ -34,39 +36,44 @@ class AsyncVectorStore:
 
     def __init__(self, is_ollama: bool = False):
         self.is_ollama = is_ollama
-        self._client: Optional[AsyncClientAPI] = None
-        self._collection: Optional[AsyncCollection] = None
+        self._client: Optional[ClientAPI] = None
+        self._collection: Optional[Collection] = None
+        self._embedding_dim = 1024
         self._embedding_function = self._create_embedding_function()
+
 
     def _create_embedding_function(self):
         """创建 ChromaDB 嵌入函数"""
         if self.is_ollama:
-            # 示例：使用 Ollama 嵌入，需自行实现或使用 langchain 的 OllamaEmbeddings
-            # 这里简化为 SentenceTransformer，实际可替换
             from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
+            self._embedding_dim = 768
             return OllamaEmbeddingFunction(model_name="nomic-embed-text", url="http://localhost:11434/api/embeddings")
+        elif configer.embedding_model_url != "":
+            self._embedding_dim = 1024
+            return OpenAIEmbeddingFunction(
+                api_key="EMPTY",
+                api_base=configer.embedding_model_url,
+                model_name=configer.embedding_model
+            )
         else:
-            return SentenceTransformerEmbeddingFunction(model_name=configer.embedding_model)
+            model = SentenceTransformerEmbeddingFunction(model_name=configer.embedding_model)
+            self._embedding_dim = model._get_model().get_sentence_embedding_dimension()
+            return model
 
-    async def initialize(self):
+    def initialize(self):
         """初始化 ChromaDB 异步客户端和集合（每个 notebook 一个集合）"""
-        self._client = await chromadb.AsyncPersistentClient(
+        self._client = chromadb.PersistentClient(
             path=configer.vector_store_path,
             settings=Settings(anonymized_telemetry=False)
         )
         # 这里我们不预创建集合，而是在操作时动态获取/创建
         # 可设计为根据 notebook_id 管理不同集合，或单集合+过滤
         # 为保持简单，使用单集合 + 元数据过滤
-        self._collection = await self._client.get_or_create_collection(
+        self._collection = self._client.get_or_create_collection(
             name="notebook_vectors",
             embedding_function=self._embedding_function,
             metadata={"hnsw:space": "cosine"}
         )
-
-    async def close(self):
-        """关闭客户端"""
-        if self._client:
-            await self._client.close()
 
     # -------------------- 文档提取与转换--------------------
     async def extract_document(self, path: str) -> str:
@@ -98,7 +105,7 @@ class AsyncVectorStore:
             raise RuntimeError(f"markitdown failed: {stderr.decode()}")
         async with aiofiles.open(tmp_file, "r", encoding="utf-8") as f:
             content = await f.read()
-        os.unlink(tmp_file)  # 同步删除，可改用 aiofiles 异步删除
+        await aiofiles.os.remove(tmp_file)  # 同步删除，可改用 aiofiles 异步删除
         return content
 
     @staticmethod
@@ -107,7 +114,7 @@ class AsyncVectorStore:
         if not configer.enable_markitdown:
             raise RuntimeError("markitdown is disabled, cannot fetch URL content")
         tmp_file = f"/tmp/markitdown_url_{uuid.uuid4().hex}.md"
-        cmd = [configer.markitdown_command, url, "-o", tmp_file]
+        cmd = [configer.markitdown_cmd, url, "-o", tmp_file]
         process = await asyncio.create_subprocess_exec(*cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
@@ -117,7 +124,7 @@ class AsyncVectorStore:
             raise RuntimeError(f"markitdown URL conversion failed: {stderr.decode()}")
         async with aiofiles.open(tmp_file, "r", encoding="utf-8") as f:
             content = await f.read()
-        os.unlink(tmp_file)
+        await aiofiles.os.remove(tmp_file)
         return content
 
     # -------------------- 文本分块--------------------
@@ -169,7 +176,7 @@ class AsyncVectorStore:
             source_name = os.path.basename(path)
             await self.ingest_text(notebook_id, source_name, content)
 
-    async def ingest_text(self, notebook_id: str, source_name: str, content: str) -> int:
+    def ingest_text(self, notebook_id: str, source_name: str, content: str) -> int:
         """摄入原始文本，分块后存入 ChromaDB"""
         chunks = self._split_text(content)
         if not chunks:
@@ -189,18 +196,18 @@ class AsyncVectorStore:
             })
 
         # 异步批量添加
-        await self._collection.add(documents=documents, metadatas=metadatas_, ids=ids)
+        self._collection.add(documents=documents, metadatas=metadatas_, ids=ids)
         logger.info(f"[VectorStore] Ingested {len(chunks)} chunks from source '{source_name}'")
         return len(chunks)
 
     # -------------------- 相似性搜索--------------------
-    async def similarity_search(self, notebook_id: str, query: str, num_docs: int = 5) -> List[Document]:
+    def similarity_search(self, notebook_id: str, query: str, num_docs: int = 5) -> List[Document]:
         """基于向量相似度的搜索，通过 notebook_id 过滤"""
         if num_docs <= 0:
             num_docs = 5
 
         # 查询 ChromaDB
-        results = await self._collection.query(
+        results = self._collection.query(
             query_texts=[query],
             n_results=num_docs,
             where={"notebook_id": notebook_id},
@@ -214,22 +221,13 @@ class AsyncVectorStore:
                 docs.append(Document(page_content=doc, metadata=meta))
         return docs
 
-    async def delete(self, source: str) -> None:
-        await self._collection.delete(where={"source": source})
+    def delete(self, source: str) -> None:
+        self._collection.delete(where={"source": source})
 
-    async def get_stats(self) -> VectorStats:
+    def get_stats(self) -> VectorStats:
         """获取当前集合的统计信息"""
-        count = await self._collection.count()
-        # 维度从嵌入函数获取（若支持）
-        dim = 1536  # 默认 OpenAI 维度
-        if configer.is_ollama():
-            dim = 768
-        else:
-            # 尝试从 sentence-transformers 模型获取维度
-            try:
-                dim = self._embedding_function._get_model().get_sentence_embedding_dimension()
-            except:
-                pass
+        count = self._collection.count()
+        dim = self._embedding_dim
         return VectorStats(total_documents=count, total_vectors=count, dimension=dim)
 
 vector_store = AsyncVectorStore()
