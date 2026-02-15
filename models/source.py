@@ -12,6 +12,7 @@ class Source(Base):
     # 添加索引以提高查询性能
     __table_args__ = (
         Index('idx_source_create', 'created_at'),
+        Index('idx_file_name', 'file_name')
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: generate_uuid())

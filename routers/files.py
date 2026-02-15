@@ -1,6 +1,4 @@
-import time
-from datetime import datetime
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
@@ -18,10 +16,11 @@ from utils.response import success_response
 router = APIRouter(prefix="/api/files", tags=["files"])
 
 
-@router.get("{filename}")
+@router.get("/{filename}")
 async def handle_serve_file(filename: str,
                             user: User = Depends(get_current_user),
                             db: AsyncSession = Depends(get_session)):
+
     source = await db_get_source_by_filename(db, filename)
     if source:
         owner_user_id = source.notebook.user_id

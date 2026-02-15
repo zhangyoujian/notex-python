@@ -19,6 +19,12 @@ async def db_get_chat_session(db: AsyncSession, session_id: str):
     return result.scalar_one_or_none()
 
 
+async def db_delete_chat_session(db: AsyncSession, session_id: str):
+    stmt = delete(ChatSession).where(ChatSession.id == session_id)
+    await db.execute(stmt)
+    await db.commit()
+
+
 async def db_list_chat_sessions(db: AsyncSession, notebook_id: str):
     query = select(ChatSession).where(ChatSession.notebook_id == notebook_id).order_by(desc(ChatSession.updated_at))
     result = await db.execute(query)

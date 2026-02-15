@@ -31,6 +31,8 @@ class Config(BaseSettings):
 
     # 向量存储设置
     vector_store_type: str = Field(default="chroma", env="VECTOR_STORE_TYPE")
+    vector_store_path: str = Field(default="./data/chroma_db", env="VECTOR_STORE_PATH")
+    markitdown_cmd: str = Field(default="/user/local/bin/markitdown", env="MARKITDOWN_CMD")
 
     # 数据库存储设置
     mysql_url: Optional[str] = Field(default=None, env="MYSQL_URL")

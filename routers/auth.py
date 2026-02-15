@@ -23,8 +23,7 @@ async def handle_me(user_id: int, db: AsyncSession = Depends(get_session)):
 
 
 @router.post("/register")
-async def register(user_data: UserRequest, db: AsyncSession = Depends(get_session)):  # 用户信息 和 db
-    # 注册逻辑：验证用户是否存在 -> 创建用户 → 生成 Token  → 响应结果
+async def register(user_data: UserRequest, db: AsyncSession = Depends(get_session)):
     existing_user = await db_get_user_by_email(db, user_data.email)
     if existing_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="用户已存在")
@@ -37,8 +36,7 @@ async def register(user_data: UserRequest, db: AsyncSession = Depends(get_sessio
 
 @router.post("/login")
 async def login(user_data: UserRequest, db: AsyncSession = Depends(get_session)):
-    # 登录逻辑：验证用户是否存在 -> 验证密码 -> 生成 Token  → 响应结果
-    user = await db_authenticate_user(db, user_data.username, user_data.password)
+    user = await db_authenticate_user(db, user_data.email, user_data.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
     token = await db_create_token(db, user.id)

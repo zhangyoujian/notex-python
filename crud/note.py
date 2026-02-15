@@ -47,7 +47,6 @@ async def db_get_note_by_file_name(db: AsyncSession, file_name: str):
             return note
 
         slides = note.metadata_dict.get("slides", "")
-
         if isinstance(list, slides):
             for slide in slides:
                 if os.path.basename(slide) == file_name:
@@ -57,7 +56,6 @@ async def db_get_note_by_file_name(db: AsyncSession, file_name: str):
                 return note
 
     logger.debug(f"Checked {len(notes)} notes, file not found")
-
     return None
 
 

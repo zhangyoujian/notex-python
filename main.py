@@ -1,13 +1,12 @@
 import os
-from datetime import datetime
-
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse, JSONResponse
-from routers import auth, api
+from routers import auth, api, files, notebooks, public
 from config import configer
 from service.database import async_engine
+from service.vector_store import vector_store
 from models.base import Base
 from contextlib import asynccontextmanager
 from utils.exception_handlers import register_exception_handlers
@@ -21,8 +20,10 @@ async def lifespan(app: FastAPI):
     # 启动时：创建表
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata_.create_all)
+        await vector_store.initialize()
     yield
     # 关闭时：清理资源
+    await vector_store.close()
     await async_engine.dispose()
 
 
@@ -52,7 +53,23 @@ if os.path.exists(static_path):
 
 
 @app.get("/", response_class=HTMLResponse)
-async def root():
+async def server_root():
+    index_path = os.path.join(frontend_path, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path, headers={"Cache-Control": "no-cache"})
+    return HTMLResponse(content="<h1>Notex Frontend not found</h1>")
+
+
+@app.get("/notes/{note_id}", response_class=HTMLResponse)
+async def server_note(note_id: str):
+    index_path = os.path.join(frontend_path, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path, headers={"Cache-Control": "no-cache"})
+    return HTMLResponse(content="<h1>Notex Frontend not found</h1>")
+
+
+@app.get("/public/{token}", response_class=HTMLResponse)
+async def server_public(token: str):
     index_path = os.path.join(frontend_path, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path, headers={"Cache-Control": "no-cache"})
@@ -62,6 +79,9 @@ async def root():
 # 挂载路由/注册路由
 app.include_router(api.router)
 app.include_router(auth.router)
+app.include_router(files.router)
+app.include_router(notebooks.router)
+app.include_router(public.router)
 
 
 if __name__ == "__main__":

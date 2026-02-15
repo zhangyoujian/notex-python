@@ -15,3 +15,10 @@ class SourceRequest(BaseModel):
     url: str
     content: str
     metadata_: str
+
+
+class NoteRequest(BaseModel):
+    title: str
+    content: str
+    type: str
+    source_ids: str

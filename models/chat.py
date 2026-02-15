@@ -15,9 +15,9 @@ class ChatMessage(Base):
     # 添加索引以提高查询性能
     __table_args__ = (
         # 角色的索引，用于按角色筛选消息
-        Index('idx_chatmessage_role', 'role'),
+        Index('idx_chat_message_role', 'role'),
         # 创建时间的索引，用于获取最新消息
-        Index('idx_chatmessage_created', 'created_at'),
+        Index('idx_chat_message_created', 'created_at'),
     )
 
     # 主键 - 使用UUID字符串
@@ -133,7 +133,8 @@ class ChatSession(Base):
     )
 
     # JSON元数据字段
-    metadata: Mapped[Optional[str]] = mapped_column(
+    metadata_: Mapped[Optional[str]] = mapped_column(
+        "metadata",
         Text,
         nullable=True,
         comment="元数据（JSON字符串）"
