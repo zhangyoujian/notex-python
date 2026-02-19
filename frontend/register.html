@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>注册 - NOTEX</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .container { max-width: 300px; margin: auto; }
+        input { width: 100%; padding: 8px; margin: 5px 0; }
+        button { padding: 10px; width: 100%; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>注册 NOTEX</h2>
+        <div id="error" class="error"></div>
+        <input type="email" id="email" placeholder="邮箱" required>
+        <input type="text" id="username" placeholder="用户名" required>
+        <input type="password" id="password" placeholder="密码" required>
+        <button onclick="register()">注册</button>
+        <p>已有账号？ <a href="/login">登录</a></p>
+    </div>
+    <script>
+        async function register() {
+            const email = document.getElementById('email').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error');
+            errorDiv.innerText = '';
+
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, username, password })
+            });
+
+            if (response.ok) {
+                alert('注册成功，请登录');
+                window.location.href = '/login';
+            } else {
+                try {
+                    const err = await response.json();
+                    let errorMsg = '注册失败';
+                    // 尝试从常见字段获取错误信息
+                    if (err.message) {
+                        errorMsg = err.message;
+                    } else if (err.detail) {
+                        if (Array.isArray(err.detail)) {
+                            errorMsg = err.detail.map(item => item.msg).join('；');
+                        } else {
+                            errorMsg = err.detail;
+                        }
+                    }
+                    errorDiv.innerText = errorMsg;
+                } catch (e) {
+                    const text = await response.text();
+                    errorDiv.innerText = text || '注册失败';
+                }
+            }
+        }
+    </script>
+</body>
+</html>

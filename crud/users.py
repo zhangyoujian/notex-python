@@ -6,12 +6,12 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.users import User, UserToken
-from schemas.users import UserRequest
+from schemas.users import RegisterRequest
 from utils import security
 
 
 # 创建用户
-async def db_create_user(db: AsyncSession, user_data: UserRequest):
+async def db_create_user(db: AsyncSession, user_data: RegisterRequest):
     # 先密码加密处理 → add
     hashed_password = security.get_hash_password(user_data.password)
     user = User(email=user_data.email, username=user_data.username, password=hashed_password)

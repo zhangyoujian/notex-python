@@ -3,7 +3,12 @@ from typing import Optional
 from pydantic import BaseModel, Field, ConfigDict
 
 
-class UserRequest(BaseModel):
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class RegisterRequest(BaseModel):
     email: str
     username: str
     password: str
@@ -18,7 +23,7 @@ class UserInfoBase(BaseModel):
 
 
 class UserInfoResponse(UserInfoBase):
-    id: int
+    username: str
     email: str
 
     # 模型类配置

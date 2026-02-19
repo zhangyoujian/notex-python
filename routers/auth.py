@@ -1,18 +1,18 @@
 from fastapi import APIRouter, Depends
 from starlette import status
 
-from schemas.users import UserAuthResponse, UserInfoResponse
+from schemas.users import UserAuthResponse, UserInfoResponse, LoginRequest, RegisterRequest
 
 from service.database import get_session
 from crud.users import *
 from utils.response import success_response
+from utils.auth import get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 @router.get("/me")
-async def handle_me(user_id: int, db: AsyncSession = Depends(get_session)):
-    user = await db_get_user_by_user_id(db, user_id)
+async def handle_me(user: User = Depends(get_current_user)):
     user_info = {
         "id": user.id,
         "email": user.email,
@@ -23,7 +23,7 @@ async def handle_me(user_id: int, db: AsyncSession = Depends(get_session)):
 
 
 @router.post("/register")
-async def register(user_data: UserRequest, db: AsyncSession = Depends(get_session)):
+async def register(user_data: RegisterRequest, db: AsyncSession = Depends(get_session)):
     existing_user = await db_get_user_by_email(db, user_data.email)
     if existing_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="用户已存在")
@@ -35,7 +35,7 @@ async def register(user_data: UserRequest, db: AsyncSession = Depends(get_sessio
 
 
 @router.post("/login")
-async def login(user_data: UserRequest, db: AsyncSession = Depends(get_session)):
+async def login(user_data: LoginRequest, db: AsyncSession = Depends(get_session)):
     user = await db_authenticate_user(db, user_data.email, user_data.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")

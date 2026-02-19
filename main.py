@@ -59,6 +59,19 @@ async def server_root():
         return FileResponse(index_path, headers={"Cache-Control": "no-cache"})
     return HTMLResponse(content="<h1>Notex Frontend not found</h1>")
 
+@app.get("/login", response_class=HTMLResponse)
+async def get_login_page():
+    index_path = os.path.join(frontend_path, "login.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path, headers={"Cache-Control": "no-cache"})
+    return HTMLResponse(content="<h1>Notex Frontend not found</h1>")
+
+@app.get("/register", response_class=HTMLResponse)
+async def get_register_page():
+    index_path = os.path.join(frontend_path, "register.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path, headers={"Cache-Control": "no-cache"})
+    return HTMLResponse(content="<h1>Notex Frontend not found</h1>")
 
 @app.get("/notes/{note_id}", response_class=HTMLResponse)
 async def server_note(note_id: str):
