@@ -106,7 +106,7 @@ async def handle_create_notebook(notebook_data: NotebookRequest,
                                         user.id,
                                         notebook_data.name,
                                         notebook_data.description,
-                                        notebook_data.metadata_)
+                                        "")
 
     return success_response(code=status.HTTP_201_CREATED, message="创建笔记成功", data=get_notebook_info(notebook))
 
@@ -171,7 +171,7 @@ async def handle_list_sources(notebook_id: str,
     await check_notebook_access(user.id, notebook_id, db)
     sources = await db_list_sources(db, notebook_id)
     if not sources:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to list sources")
+        return success_response(message="列举公开资源信息成功")
 
     source_list = []
     for source in sources:
@@ -200,7 +200,7 @@ async def handle_add_source(notebook_id: str,
                                     "",
                                     0,
                                     0,
-                                    source_data.metadata_)
+                                    source_data.metadata)
 
     if source.content != "":
         chunk_count = vector_store.ingest_text(notebook_id, source.name, source.content)
@@ -233,8 +233,11 @@ async def handle_list_notes(notebook_id: str,
                             db: AsyncSession = Depends(get_session)):
     """列出笔记"""
     notes = await db_list_notes(db, notebook_id)
+    notex_list = []
+    for note in notes:
+        notex_list.append(get_note_info(note))
 
-    return success_response(message="获取笔记信息列表成功", data=get_note_info(notes))
+    return success_response(message="获取笔记信息列表成功", data=notex_list)
 
 
 @router.post("/{notebook_id}/notes")

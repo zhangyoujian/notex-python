@@ -200,15 +200,15 @@ class OpenNotebook {
             const [notebook, sources, notes] = await Promise.all([
                 fetch(`/public/notebooks/${token}`).then(r => {
                     if (!r.ok) throw new Error('Failed to load notebook');
-                    return r.json();
+                    return r.data;
                 }),
                 fetch(`/public/notebooks/${token}/sources`).then(r => {
                     if (!r.ok) throw new Error('Failed to load sources');
-                    return r.json();
+                    return r.data;
                 }),
                 fetch(`/public/notebooks/${token}/notes`).then(r => {
                     if (!r.ok) throw new Error('Failed to load notes');
-                    return r.json();
+                    return r.data;
                 })
             ]);
 
@@ -551,16 +551,16 @@ class OpenNotebook {
             const response = await fetch(url, { ...defaults, ...options });
             clearTimeout(id);
 
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({ error: '请求失败' }));
-                throw new Error(error.error || '请求失败');
-            }
-
             if (response.status === 204) {
                 return null;
             }
 
-            return response.json();
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.detail || result.message || '请求失败');
+            }
+            return result.data
+
         } catch (error) {
             clearTimeout(id);
             if (error.name === 'AbortError') {
@@ -579,7 +579,7 @@ class OpenNotebook {
 
         try {
             const user = await this.api('/auth/me');
-            this.currentUser = user.data;
+            this.currentUser = user;
             this.updateAuthUI();
         } catch (error) {
             console.warn('Auth check failed:', error);
@@ -643,104 +643,6 @@ class OpenNotebook {
         // this.showLoginModal();
         window.location.href = '/login';
     }
-
-//    showLoginModal() {
-//        // Create or get existing modal
-//        let modal = document.getElementById('loginModal');
-//        if (!modal) {
-//            // Create modal dynamically
-//            modal = document.createElement('div');
-//            modal.id = 'loginModal';
-//            modal.className = 'login-modal';
-//            modal.innerHTML = `
-//                <div class="login-modal-content">
-//                    <div class="login-modal-header">
-//                        <h3>选择登录方式</h3>
-//                        <button class="btn-close-login" id="btnCloseLoginModal">×</button>
-//                    </div>
-//                    <div class="login-modal-body">
-//                        <button class="btn-login-provider" id="btnLoginGithub">
-//                            <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
-//                                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-//                            </svg>
-//                            使用 GitHub 登录
-//                        </button>
-//                        <button class="btn-login-provider" id="btnLoginGoogle">
-//                            <svg width="20" height="20" viewBox="0 0 16 16">
-//                                <path fill="#4285F4" d="M14.9 8.16c0-.95-.08-1.65-.21-2.37H8v4.4h3.83c-.17.96-.69 2.05-1.55 2.68v2.19h2.48c1.46-1.34 2.3-3.31 2.3-5.64z"/>
-//                                <path fill="#34A853" d="M8 16c2.07 0 3.83-.69 5.11-1.87l-2.48-2.19c-.69.46-1.57.73-2.63.73-2.02 0-3.74-1.37-4.35-3.19H1.11v2.26C2.38 13.89 4.99 16 8 16z"/>
-//                                <path fill="#FBBC05" d="M3.65 9.52c-.16-.46-.25-.95-.25-1.47s.09-1.01.25-1.47V4.48H1.11C.4 5.87 0 7.39 0 8s.4 2.13 1.11 3.52l2.54-2z"/>
-//                                <path fill="#EA4335" d="M8 3.24c1.14 0 2.17.39 2.98 1.15l2.2-2.2C11.83.87 10.07 0 8 0 4.99 0 2.38 2.11 1.11 4.48l2.54 2.26c.61-1.82 2.33-3.5 4.35-3.5z"/>
-//                            </svg>
-//                            使用 Google 登录
-//                        </button>
-//                    </div>
-//                </div>
-//            `;
-//            document.body.appendChild(modal);
-//
-//            // Add event listeners
-//            document.getElementById('btnCloseLoginModal').addEventListener('click', () => {
-//                this.closeLoginModal();
-//            });
-//            document.getElementById('btnLoginGithub').addEventListener('click', () => {
-//                this.loginWithProvider('github');
-//            });
-//            document.getElementById('btnLoginGoogle').addEventListener('click', () => {
-//                this.loginWithProvider('google');
-//            });
-//        }
-//
-//        modal.classList.add('active');
-//    }
-//
-//    closeLoginModal() {
-//        const modal = document.getElementById('loginModal');
-//        if (modal) {
-//            modal.classList.remove('active');
-//        }
-//    }
-
-//    loginWithProvider(provider) {
-//        this.closeLoginModal();
-//
-//        // Open popup
-//        const width = 600;
-//        const height = 700;
-//        const left = (screen.width - width) / 2;
-//        const top = (screen.height - height) / 2;
-//
-//        window.open(
-//            `/auth/login/${provider}`,
-//            'NotexLogin',
-//            `width=${width},height=${height},top=${top},left=${left}`
-//        );
-//
-//        // Listen for message with origin validation
-//        const messageHandler = (event) => {
-//            // Validate origin for security
-//            if (event.origin !== window.location.origin) {
-//                console.warn('Received message from untrusted origin:', event.origin);
-//                return;
-//            }
-//
-//            if (event.data.token && event.data.user) {
-//                this.token = event.data.token;
-//                this.currentUser = event.data.user;
-//                localStorage.setItem('token', this.token);
-//
-//                // Also set token as cookie for image loading
-//                document.cookie = `token=${this.token}; path=/; SameSite=Lax`;
-//
-//                this.updateAuthUI();
-//
-//                // Reload data
-//                this.loadNotebooks();
-//            }
-//        };
-//
-//        window.addEventListener('message', messageHandler, { once: true });
-//    }
 
     handleLogout() {
         this.token = null;
@@ -864,7 +766,7 @@ class OpenNotebook {
             const response = await fetch('/public/notebooks');
             if (!response.ok) return;
 
-            const notebooks = await response.json();
+            const notebooks = await response.data;
             this.renderPublicNotebooksShowcase(notebooks);
         } catch (error) {
             console.error('Failed to load public notebooks showcase:', error);

@@ -1,63 +1,191 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
-    <title>注册 - NOTEX</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 · OpenNotebook</title>
+    <link rel="stylesheet" href="/static/style.css">
     <style>
-        body { font-family: Arial; padding: 20px; }
-        .container { max-width: 300px; margin: auto; }
-        input { width: 100%; padding: 8px; margin: 5px 0; }
-        button { padding: 10px; width: 100%; }
-        .error { color: red; }
+        /* 与登录页保持一致风格，可复用大部分样式，仅调整部分细节 */
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .auth-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            padding: 2.5rem 2rem;
+            width: 100%;
+            max-width: 420px;
+            margin: 1.5rem;
+            transition: transform 0.3s ease;
+        }
+        .auth-card:hover {
+            transform: translateY(-4px);
+        }
+        .auth-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .auth-header h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin: 0 0 0.5rem;
+            letter-spacing: -0.5px;
+        }
+        .auth-header p {
+            color: #666;
+            font-size: 0.95rem;
+            margin: 0;
+        }
+        .auth-form .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .auth-form label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+        .auth-form input {
+            width: 100%;
+            padding: 0.85rem 1rem;
+            font-size: 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            background-color: #f9fafb;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-sizing: border-box;
+        }
+        .auth-form input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background-color: #fff;
+        }
+        .auth-form .btn-primary {
+            width: 100%;
+            padding: 0.9rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .auth-form .btn-primary:hover {
+            opacity: 0.9;
+            transform: scale(1.02);
+        }
+        .auth-form .btn-primary:active {
+            transform: scale(0.98);
+        }
+        .auth-footer {
+            text-align: center;
+            margin-top: 2rem;
+            font-size: 0.95rem;
+            color: #666;
+        }
+        .auth-footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+        .auth-footer a:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+        .error-message {
+            background: #fee2e2;
+            color: #b91c1c;
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #ef4444;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>注册 NOTEX</h2>
-        <div id="error" class="error"></div>
-        <input type="email" id="email" placeholder="邮箱" required>
-        <input type="text" id="username" placeholder="用户名" required>
-        <input type="password" id="password" placeholder="密码" required>
-        <button onclick="register()">注册</button>
-        <p>已有账号？ <a href="/login">登录</a></p>
+    <div class="auth-card">
+        <div class="auth-header">
+            <h2>创建账号</h2>
+            <p>开启您的 OpenNotebook 知识之旅</p>
+        </div>
+
+        <form id="registerForm" class="auth-form">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" placeholder="yourname" required>
+            </div>
+            <div class="form-group">
+                <label for="email">邮箱地址</label>
+                <input type="email" id="email" name="email" placeholder="your@zuel.edu.cn" required>
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" placeholder="至少8位" required>
+            </div>
+
+            <div id="registerError" class="error-message" style="display: none;"></div>
+
+            <button type="submit" class="btn-primary">注册</button>
+        </form>
+
+        <div class="auth-footer">
+            已有账号？ <a href="/login">立即登录</a>
+        </div>
     </div>
+
     <script>
-        async function register() {
-            const email = document.getElementById('email').value;
-            const username = document.getElementById('username').value;
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('error');
-            errorDiv.innerText = '';
+            const errorDiv = document.getElementById('registerError');
+            errorDiv.style.display = 'none';
 
-            const response = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, username, password })
-            });
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+                const result = await response.json();
 
-            if (response.ok) {
-                alert('注册成功，请登录');
-                window.location.href = '/login';
-            } else {
-                try {
-                    const err = await response.json();
+                if (response.ok) {
+                    alert('注册成功，请登录');
+                    window.location.href = '/login';
+                } else {
                     let errorMsg = '注册失败';
-                    // 尝试从常见字段获取错误信息
-                    if (err.message) {
-                        errorMsg = err.message;
-                    } else if (err.detail) {
-                        if (Array.isArray(err.detail)) {
-                            errorMsg = err.detail.map(item => item.msg).join('；');
-                        } else {
-                            errorMsg = err.detail;
-                        }
+                    // 优先使用后端统一的 message 字段
+                    if (result.message) {
+                        errorMsg = result.message;
+                    } else if (result.detail) {
+                        errorMsg = Array.isArray(result.detail) ? result.detail.map(i => i.msg).join('；') : result.detail;
                     }
                     errorDiv.innerText = errorMsg;
-                } catch (e) {
-                    const text = await response.text();
-                    errorDiv.innerText = text || '注册失败';
+                    errorDiv.style.display = 'block';
                 }
+            } catch (err) {
+                errorDiv.innerText = '网络错误，请稍后重试';
+                errorDiv.style.display = 'block';
             }
-        }
+        });
     </script>
 </body>
 </html>

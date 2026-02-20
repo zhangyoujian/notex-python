@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field, ConfigDict
 class NotebookRequest(BaseModel):
     name: str
     description: str
-    metadata_: str
 
 
 class SourceRequest(BaseModel):
@@ -14,7 +13,7 @@ class SourceRequest(BaseModel):
     type: str
     url: str
     content: str
-    metadata_: str
+    metadata: Optional[str]
 
 
 class NoteRequest(BaseModel):

@@ -4,7 +4,7 @@ from config import configer
 # 创建异步引擎
 async_engine = create_async_engine(
     url=configer.mysql_url,
-    echo=True,                      # 可选：输出SQL日志
+    echo=False,                      # 可选：输出SQL日志
     pool_size=10,                   # 设置连接池中保持的持久连接数
     max_overflow=20                 # 设置连接池允许创建的额外连接数
 )

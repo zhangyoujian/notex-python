@@ -1,5 +1,7 @@
 from sqlalchemy import select, update, desc, delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from models.notebook import Notebook, Note
 from utils import logger
 from models.base import generate_uuid
@@ -62,7 +64,15 @@ async def db_delete_notebook(db: AsyncSession, notebook_id: str):
 
 
 async def db_list_notebook_with_stats(db: AsyncSession, user_id: int):
-    query = select(Notebook).where(Notebook.user_id == user_id).order_by(desc(Notebook.updated_at))
+    query = (
+        select(Notebook)
+        .where(Notebook.user_id == user_id)
+        .options(
+    selectinload(Notebook.sources),
+            selectinload(Notebook.notes)
+        )
+        .order_by(desc(Notebook.updated_at))
+    )
     result = await db.execute(query)
     notebooks = result.scalars().all()
     notebook_list = []
@@ -73,7 +83,7 @@ async def db_list_notebook_with_stats(db: AsyncSession, user_id: int):
             "id": notebook.id,
             "user_id": notebook.user_id,
             "name": notebook.name,
-            "description": notebook.notebook,
+            "description": notebook.description,
             "is_public": notebook.is_public,
             "public_token": notebook.public_token,
             "created_at": notebook.created_at,
