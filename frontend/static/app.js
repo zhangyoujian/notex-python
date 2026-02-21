@@ -406,6 +406,11 @@ class OpenNotebook {
             if (el) el.addEventListener(event, handler);
         };
 
+        safeAddEventListener('btnCloseAdmin', 'click', () => this.closeAdminModal());
+        safeAddEventListener('btnCloseEditUser', 'click', () => this.closeEditUserModal());
+        safeAddEventListener('btnCancelEditUser', 'click', () => this.closeEditUserModal());
+        safeAddEventListener('editUserForm', 'submit', (e) => this.handleEditUser(e));
+        safeAddEventListener('btnAdminPanel', 'click', () => this.showAdminPanel());
         safeAddEventListener('btnNewNotebook', 'click', () => this.showNewNotebookModal());
         safeAddEventListener('btnNewNotebookLanding', 'click', () => this.showNewNotebookModal());
         safeAddEventListener('btnShareNotebook', 'click', () => {
@@ -516,6 +521,114 @@ class OpenNotebook {
             }
         });
     }
+    async showAdminPanel() {
+        // 如果当前不是管理员，直接返回
+        if (this.currentUser?.email !== 'admin@zuel.edu.cn') return;
+
+        // 隐藏主工作区，显示管理面板（可以新建一个容器或模态框）
+        // 这里简单起见，我们使用一个全屏覆盖的模态框
+        this.showAdminModal();
+    }
+
+    // 显示管理面板
+    async showAdminModal() {
+        const modal = document.getElementById('adminModal');
+        const overlay = document.getElementById('modalOverlay');
+        modal.classList.add('active');
+        overlay.classList.add('active');
+        await this.loadUsers();
+    }
+
+    // 加载用户列表
+    async loadUsers() {
+        try {
+            const users = await this.api('/admin/users');
+            this.renderUsers(users);
+        } catch (error) {
+            this.showError('加载用户列表失败：' + error.message);
+        }
+    }
+
+    // 渲染用户表格
+    renderUsers(users) {
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = '';
+        users.forEach(user => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${user.id}</td>
+                <td>${user.email}</td>
+                <td>${user.username}</td>
+                <td>${this.formatDate(user.created_at)}</td>
+                <td>
+                    <button class="btn-edit-user" data-id="${user.id}" data-username="${user.username}" data-email="${user.email}">编辑</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // 绑定编辑按钮事件
+        document.querySelectorAll('.btn-edit-user').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = btn.dataset.id;
+                const username = btn.dataset.username;
+                const email = btn.dataset.email;
+                this.showEditUserModal(id, username, email);
+            });
+        });
+    }
+
+    // 显示编辑用户模态框
+    showEditUserModal(userId, username, email) {
+        document.getElementById('editUserId').value = userId;
+        document.getElementById('editUserEmail').value = email;
+        document.getElementById('editUsername').value = username;
+        document.getElementById('editPassword').value = '';
+
+        const modal = document.getElementById('editUserModal');
+        const overlay = document.getElementById('modalOverlay');
+        modal.classList.add('active');
+        overlay.classList.add('active');
+    }
+
+    // 处理编辑用户表单提交
+    async handleEditUser(e) {
+        e.preventDefault();
+        const user_id = document.getElementById('editUserId').value;
+        const email = document.getElementById('editUserEmail').value.trim();
+        const username = document.getElementById('editUsername').value.trim();
+        const password = document.getElementById('editPassword').value;
+
+        if (!username) {
+            this.showError('用户名不能为空');
+            return;
+        }
+        const data = {email, username, password};
+
+        try {
+            await this.api(`/admin/users/${user_id}`, {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            });
+            this.showToast('用户信息更新成功', 'success');
+            this.closeEditUserModal();
+            await this.loadUsers(); // 刷新列表
+        } catch (error) {
+            this.showError('更新失败：' + error.message);
+        }
+    }
+
+    // 关闭编辑用户模态框
+    closeEditUserModal() {
+        document.getElementById('editUserModal').classList.remove('active');
+        document.getElementById('modalOverlay').classList.remove('active');
+    }
+
+    // 关闭管理面板
+    closeAdminModal() {
+        document.getElementById('adminModal').classList.remove('active');
+        document.getElementById('modalOverlay').classList.remove('active');
+    }
 
     // API 方法
     async api(endpoint, options = {}) {
@@ -601,14 +714,16 @@ class OpenNotebook {
         const userAvatarWorkspace = document.getElementById('userAvatarWorkspace');
         const userNameWorkspace = document.getElementById('userNameWorkspace');
 
+         const btnAdmin = document.getElementById('btnAdminPanel');
+        if (btnAdmin) {
+            if (this.currentUser?.email === 'admin@zuel.edu.cn') {
+                btnAdmin.style.display = 'inline-block';
+            } else {
+                btnAdmin.style.display = 'none'; // 退出时隐藏
+            }
+        }
+
         if (this.currentUser) {
-            // Get provider display name
-//            const providerNames = {
-//                'github': 'GitHub',
-//                'google': 'Google'
-//            };
-//            const providerName = providerNames[this.currentUser.provider] || this.currentUser.provider;
-//            const tooltipText = `登录方式: ${providerName}\n账号ID: ${this.currentUser.email}`;
             const tooltipText = `登录账号: ${this.currentUser.email}`;
             // Update landing page
             if (btnLogin) btnLogin.classList.add('hidden');
@@ -766,7 +881,7 @@ class OpenNotebook {
             const response = await fetch('/public/notebooks');
             if (!response.ok) return;
 
-            const notebooks = await response.data;
+            const notebooks = await response.json();
             this.renderPublicNotebooksShowcase(notebooks);
         } catch (error) {
             console.error('Failed to load public notebooks showcase:', error);

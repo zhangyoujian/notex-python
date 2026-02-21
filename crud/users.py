@@ -1,13 +1,14 @@
 import uuid
 from datetime import datetime, timedelta
-
+from starlette import status
 from fastapi import HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import select, update, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.users import User, UserToken
-from schemas.users import RegisterRequest
+from schemas.users import RegisterRequest, UpdateRequest
 from utils import security
+from utils.security import check_password_complexity
 
 
 # 创建用户
@@ -80,23 +81,38 @@ async def db_get_user_by_token(db: AsyncSession, token: str):
     return result.scalar_one_or_none()
 
 
-# async def db_update_user(db: AsyncSession, email: str, user_data: UserUpdateRequest):
-#     # user_data 是一个Pydantic类型，得到字典 → ** 解包
-#     # 没有设置值的不更新
-#     query = update(User).where(User.email == email).values(**user_data.model_dump(
-#         exclude_unset=True,
-#         exclude_none=True
-#     ))
-#     result = await db.execute(query)
-#     await db.commit()
-#
-#     # 检查更新
-#     if result.rowcount == 0:
-#         raise HTTPException(status_code=404, detail="用户不存在")
-#
-#     # 获取一下更新后的用户
-#     updated_user = await db_get_user_by_email(db, email)
-#     return updated_user
+async def db_list_all_users(db: AsyncSession):
+    """获取所有用户（按创建时间倒序）"""
+    query = select(User).order_by(desc(User.created_at))
+    result = await db.execute(query)
+    return result.scalars().all()
+
+
+async def db_update_user(db: AsyncSession, user_id: int, user_data: UpdateRequest):
+
+    if not user_data.password or user_data.password == "":
+        stmt = update(User).where(User.id == user_id).values(username=user_data.username)
+    else:
+        is_ok, detail = check_password_complexity(user_data.password)
+        if not is_ok:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+
+        new_passwd = security.get_hash_password(user_data.password)
+        stmt = update(User).where(User.id == user_id).values(username=user_data.username, password=new_passwd)
+
+    # 更新用户名或密码
+    result = await db.execute(stmt)
+    await db.commit()
+
+    # 检查更新
+    if result.rowcount == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    # 更新用户token
+    await db_create_token(db, user_id)
+
+    updated_user = await db_get_user_by_user_id(db, user_id)
+    return updated_user
 #
 #
 # # 修改密码: 验证旧密码 → 新密码加密 → 修改密码

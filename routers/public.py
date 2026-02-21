@@ -15,24 +15,23 @@ from .notebooks import get_notebook_info, get_source_info, get_note_info
 from service.auth import get_current_user
 from utils.response import success_response
 
-router = APIRouter(prefix="/api/public", tags=["public"])
+router = APIRouter(prefix="/public", tags=["public"])
 
 
 @router.get("/notebooks")
-async def handle_list_public_notebooks(user: User = Depends(get_current_user),
-                                       db: AsyncSession = Depends(get_session)):
+async def handle_list_public_notebooks(db: AsyncSession = Depends(get_session)):
 
     notebooks = await db_list_public_notebook(db, limit=100)
     notebook_list = []
-    for notebook in notebooks:
-        notebook_list.append(get_notebook_info(notebook))
+    if notebooks:
+        for notebook in notebooks:
+            notebook_list.append(get_notebook_info(notebook))
 
     return success_response(message="获取公共笔记列表成功", data=notebook_list)
 
 
 @router.get("/notebooks/{token}")
 async def handle_get_public_notebooks(token: str,
-                                      user: User = Depends(get_current_user),
                                       db: AsyncSession = Depends(get_session)):
     notebook = await db_get_notebook_by_public_token(db, token)
 
@@ -41,7 +40,6 @@ async def handle_get_public_notebooks(token: str,
 
 @router.get("/notebooks/{token}/sources")
 async def handle_list_public_sources(token: str,
-                                     user: User = Depends(get_current_user),
                                      db: AsyncSession = Depends(get_session)):
     notebook = await db_get_notebook_by_public_token(db, token)
 
@@ -55,7 +53,6 @@ async def handle_list_public_sources(token: str,
 
 @router.get("/notebooks/{token}/notes")
 async def handle_list_public_notes(token: str,
-                                   user: User = Depends(get_current_user),
                                    db: AsyncSession = Depends(get_session)):
     notebook = await db_get_notebook_by_public_token(db, token)
 

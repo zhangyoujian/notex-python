@@ -14,6 +14,12 @@ class RegisterRequest(BaseModel):
     password: str
 
 
+class UpdateRequest(BaseModel):
+    email: str
+    username: Optional[str]
+    password: Optional[str]
+
+
 # user_info 对应的类：基础类 + Info 类（id、用户名）
 class UserInfoBase(BaseModel):
     """

@@ -14,6 +14,7 @@ class User(Base):
     # 创建索引
     __table_args__ = (
         Index('email_UNIQUE', 'email'),
+        Index('created_at_index', 'created_at')
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="用户ID")

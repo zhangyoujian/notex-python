@@ -3,7 +3,7 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadF
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse, JSONResponse
-from routers import auth, api, files, notebooks, public
+from routers import auth, api, files, notebooks, public, admin
 from config import configer
 from service.database import async_engine
 from service.vector_store import vector_store
@@ -91,6 +91,7 @@ async def server_public(token: str):
 
 # 挂载路由/注册路由
 app.include_router(api.router)
+app.include_router(admin.router)
 app.include_router(auth.router)
 app.include_router(files.router)
 app.include_router(notebooks.router)

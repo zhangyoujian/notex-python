@@ -4,6 +4,7 @@ from starlette import status
 
 from service.database import get_session
 from crud import users
+from models.users import User
 
 
 # 整合 根据 Token 查询用户，返回用户
@@ -19,3 +20,9 @@ async def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="无效的令牌或已经过期的令牌")
 
     return user
+
+
+async def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.email != "admin@zuel.edu.cn":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="仅管理员可执行此操作")
+    return current_user

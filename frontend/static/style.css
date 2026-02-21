@@ -78,6 +78,7 @@
     --z-modal: 1050;
     --z-popover: 1060;
     --z-tooltip: 1070;
+    --accent-purple: #8b5cf6; /* 亮紫色 */
 }
 
 /* Reset & Base */
@@ -3356,5 +3357,99 @@ body {
 .workspace-container.readonly-mode .transform-card {
     pointer-events: none;
     opacity: 0.5;
+}
+
+/* 管理员按钮 */
+.btn-admin {
+    background: var(--accent-primary);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    margin-left: 10px;
+    transition: all var(--transition-normal);
+}
+.btn-admin:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+/* 管理员模态框容器 */
+.admin-modal-content {
+    width: 95%;
+    max-width: 1200px;        /* 大屏幕自适应，最大1200px */
+}
+
+/* 表格外层包装（支持垂直滚动，水平不溢出） */
+.users-table-wrapper {
+    max-height: 70vh;
+    overflow-y: auto;          /* 只允许垂直滚动 */
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+}
+
+/* 表格基础设置 */
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    table-layout: fixed;       /* 固定布局，列宽由设定宽度控制 */
+}
+
+/* 表头样式（固定） */
+.users-table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-secondary);
+    z-index: 2;
+    padding: 8px 10px;
+    border-bottom: 2px solid var(--border-color);
+    text-align: left;
+    font-weight: 600;
+}
+
+/* 单元格样式：允许换行，长单词断行 */
+.users-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border-color);
+    word-wrap: break-word;      /* 长单词/URL 换行 */
+    word-break: break-word;     /* 兼容性 */
+    line-height: 1.4;
+}
+
+/* 列宽分配（根据内容特点） */
+.users-table th:nth-child(1),
+.users-table td:nth-child(1) { width: 8%; }   /* ID */
+.users-table th:nth-child(2),
+.users-table td:nth-child(2) { width: 25%; }  /* 邮箱 */
+.users-table th:nth-child(3),
+.users-table td:nth-child(3) { width: 18%; }  /* 用户名 */
+.users-table th:nth-child(4),
+.users-table td:nth-child(4) { width: 20%; }  /* 创建时间 */
+.users-table th:nth-child(5),
+.users-table td:nth-child(5) { width: 12%; }  /* 操作（最小宽度） */
+
+/* 操作按钮样式 */
+.btn-edit-user {
+    background: var(--accent-blue, #3b82f6);
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background-color 0.2s;
+    white-space: nowrap;       /* 按钮文字不换行 */
+    display: inline-block;
+}
+.btn-edit-user:hover {
+    background: #2563eb;
+}
+
+.readonly {
+    background: var(--bg-secondary);
+    cursor: not-allowed;
 }
 

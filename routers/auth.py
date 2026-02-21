@@ -7,6 +7,7 @@ from service.database import get_session
 from crud.users import *
 from utils.response import success_response
 from utils.auth import get_current_user
+from utils.security import check_password_complexity, check_valid_email
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -27,6 +28,13 @@ async def register(user_data: RegisterRequest, db: AsyncSession = Depends(get_se
     existing_user = await db_get_user_by_email(db, user_data.email)
     if existing_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="用户已存在")
+
+    if not check_valid_email(user_data.email):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的邮箱账号")
+
+    is_ok, detail = check_password_complexity(user_data.password)
+    if not is_ok:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
     user = await db_create_user(db, user_data)
     token = await db_create_token(db, user.id)
