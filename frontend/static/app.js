@@ -2380,6 +2380,21 @@ class OpenNotebook {
         this.addMessage('user', message);
         input.value = '';
 
+        // 2. 添加一个临时“思考中”消息
+        const thinkingId = 'thinking-message-' + Date.now();
+        const thinkingDiv = document.createElement('div');
+        thinkingDiv.id = thinkingId;
+        thinkingDiv.className = 'chat-message thinking-message';
+        thinkingDiv.setAttribute('data-role', 'assistant');
+        thinkingDiv.innerHTML = `
+            <div class="message-avatar">AI</div>
+            <div class="message-content">
+                <p class="message-text">思考中...</p>
+            </div>
+        `;
+        document.getElementById('chatMessages').appendChild(thinkingDiv);
+        document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+
         const sources = await this.api(`/notebooks/${this.currentNotebook.id}/sources`);
         if (sources.length === 0) {
             this.addMessage('assistant', '请先为笔记本添加一些来源。');
@@ -2397,10 +2412,15 @@ class OpenNotebook {
                 }),
             });
 
+            const thinkingMsg = document.getElementById(thinkingId);
+            if (thinkingMsg) thinkingMsg.remove();
+
             this.addMessage('assistant', response.message, response.sources);
             this.currentChatSession = response.session_id;
             this.setStatus('就绪');
         } catch (error) {
+            const thinkingMsg = document.getElementById(thinkingId);
+            if (thinkingMsg) thinkingMsg.remove();
             this.addMessage('assistant', `错误: ${error.message}`);
             this.setStatus('错误');
         }
@@ -2423,7 +2443,29 @@ class OpenNotebook {
 
         const messageText = message.querySelector('.message-text');
         if (role === 'assistant') {
-            messageText.innerHTML = marked.parse(content);
+            // 分离思考部分和答案部分
+            const thinkMatch = content.match(/^(.*?)<think>(.*?)<\/think>(.*)$/s);
+            if (thinkMatch) {
+                const before = thinkMatch[1];
+                const think = thinkMatch[2];
+                const after = thinkMatch[3];
+                const fullAnswer = before + after;
+                // 创建折叠元素
+                const details = document.createElement('details');
+                details.className = 'think-details';
+                const summary = document.createElement('summary');
+                summary.textContent = '查看推理过程';
+                details.appendChild(summary);
+                const thinkDiv = document.createElement('div');
+                thinkDiv.className = 'thinking-part';
+                thinkDiv.innerHTML = marked.parse(think);
+                details.appendChild(thinkDiv);
+                // 将答案和折叠元素插入消息中
+                messageText.innerHTML = marked.parse(fullAnswer);
+                messageText.appendChild(details);
+            } else {
+                messageText.innerHTML = marked.parse(content);
+            }
         } else {
             messageText.textContent = content;
         }

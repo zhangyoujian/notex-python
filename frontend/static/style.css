@@ -3448,6 +3448,36 @@ body {
     background: #2563eb;
 }
 
+.thinking-message .message-text {
+    font-style: italic;
+    color: var(--text-muted);
+    opacity: 0.8;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+}
+
+.think-details {
+    margin-top: 10px;
+}
+.think-details summary {
+    cursor: pointer;
+    color: var(--accent-primary);
+    font-size: 0.85rem;
+}
+.thinking-part {
+    color: var(--text-muted);
+    font-style: italic;
+    opacity: 0.7;
+    padding: 8px;
+    background: var(--bg-secondary);
+    border-left: 3px solid var(--accent-primary);
+}
+
 .readonly {
     background: var(--bg-secondary);
     cursor: not-allowed;

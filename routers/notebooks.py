@@ -421,7 +421,7 @@ async def handle_send_message(notebook_id: str,
         sources_ids.append(ids.id)
 
     await db_add_chat_message(db, session_id, "user", chat_request.message, "")
-    await db_add_chat_message(db, session_id, "assistant", response.message, json.dump(sources_ids, ensure_ascii=False))
+    await db_add_chat_message(db, session_id, "assistant", response.message, json.dumps(sources_ids, ensure_ascii=False))
 
 
     return success_response(message="发送消息成功", data=response)
@@ -439,7 +439,7 @@ async def handle_chat(notebook_id: str,
     # Create or get session
     session_id = chat_request.session_id
     if not session_id:
-        session = await db_create_chat_session(db, notebook_id, "")
+        session = await db_create_chat_session(db, notebook_id)
         session_id = session.id
 
     # Get session history
@@ -459,6 +459,7 @@ async def handle_chat(notebook_id: str,
             source_ids_set.add(source)
 
     context_text = "\n\n".join(context_parts) if context_parts else ""
+
 
     response_text = await server.agent.generate_chat(notebook_id, chat_request.message, session.messages, context_text)
 
