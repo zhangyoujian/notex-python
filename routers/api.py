@@ -1,6 +1,5 @@
 import time
 import io
-from datetime import datetime
 import uuid
 from pathlib import Path
 
@@ -20,17 +19,6 @@ from crud.source import db_create_source, db_update_source_chunk_count
 from routers.notebooks import get_source_info
 
 from utils.response import success_response
-
-
-async def audit_middleware_lite(request: Request, call_next):
-    # 审计逻辑
-    start_time = datetime.now()
-    response = await call_next(request)
-    process_time = (datetime.now() - start_time).total_seconds()
-
-    # 记录审计日志（示例）
-    logger.info(f"AUDIT: {request.method} {request.url.path} - {response.status_code} - {process_time}s")
-    return response
 
 
 async def save_user_file(user_id: int, file: UploadFile):
@@ -61,7 +49,7 @@ async def save_user_file(user_id: int, file: UploadFile):
     return unique_filename, temp_path.name
 
 # 创建路由组
-router = APIRouter(prefix="/api", dependencies=[Depends(audit_middleware_lite), Depends(get_current_user)])
+router = APIRouter(prefix="/api", dependencies=[Depends(get_current_user)])
 
 
 @router.get("/health")

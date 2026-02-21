@@ -200,14 +200,23 @@ class OpenNotebook {
             const [notebook, sources, notes] = await Promise.all([
                 fetch(`/public/notebooks/${token}`).then(r => {
                     if (!r.ok) throw new Error('Failed to load notebook');
+
+                    const result = r.json()
+                    const data = result.data
                     return r.data;
                 }),
                 fetch(`/public/notebooks/${token}/sources`).then(r => {
                     if (!r.ok) throw new Error('Failed to load sources');
+
+                    const result = r.json()
+                    const data = result.data
                     return r.data;
                 }),
                 fetch(`/public/notebooks/${token}/notes`).then(r => {
                     if (!r.ok) throw new Error('Failed to load notes');
+
+                    const result = r.json()
+                    const data = result.data
                     return r.data;
                 })
             ]);
@@ -881,7 +890,8 @@ class OpenNotebook {
             const response = await fetch('/public/notebooks');
             if (!response.ok) return;
 
-            const notebooks = await response.json();
+            const result = await response.json();
+            const notebooks = result.data
             this.renderPublicNotebooksShowcase(notebooks);
         } catch (error) {
             console.error('Failed to load public notebooks showcase:', error);

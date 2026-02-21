@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -14,6 +15,16 @@ from utils import logger
 
 VERSION = "1.0.0"
 
+
+async def audit_middleware_lite(request: Request, call_next):
+    # 审计逻辑
+    start_time = datetime.now()
+    response = await call_next(request)
+    process_time = (datetime.now() - start_time).total_seconds()
+
+    # 记录审计日志（示例）
+    logger.info(f"AUDIT: {request.method} {request.url.path} - {response.status_code} - {process_time}s")
+    return response
 
 
 @asynccontextmanager
@@ -37,6 +48,7 @@ app = FastAPI(
 # 注册异常处理器
 register_exception_handlers(app)
 
+app.middleware("http")(audit_middleware_lite)
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,10 +58,19 @@ app.add_middleware(
     allow_headers=["*"],     # 允许的请求头
 )
 
+
 frontend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "frontend"))
 static_path = os.path.join(frontend_path, "static")
 if os.path.exists(static_path):
     app.mount("/static", StaticFiles(directory=static_path), name="static")
+
+# 挂载路由/注册路由
+app.include_router(public.router)
+app.include_router(api.router)
+app.include_router(admin.router)
+app.include_router(auth.router)
+app.include_router(files.router)
+app.include_router(notebooks.router)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -88,14 +109,6 @@ async def server_public(token: str):
         return FileResponse(index_path, headers={"Cache-Control": "no-cache"})
     return HTMLResponse(content="<h1>Notex Frontend not found</h1>")
 
-
-# 挂载路由/注册路由
-app.include_router(api.router)
-app.include_router(admin.router)
-app.include_router(auth.router)
-app.include_router(files.router)
-app.include_router(notebooks.router)
-app.include_router(public.router)
 
 
 if __name__ == "__main__":
