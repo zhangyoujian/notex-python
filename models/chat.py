@@ -150,6 +150,6 @@ class ChatSession(Base):
         "ChatMessage",
         back_populates="session",
         cascade="all, delete-orphan",            # 会话删除时，消息也删除
-        lazy="dynamic",                          # 对于大量消息，使用dynamic可以更好地控制查询
+        lazy="selectin",
         order_by="ChatMessage.created_at.asc()"  # 按创建时间升序排序
     )

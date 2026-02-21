@@ -18,7 +18,7 @@ class Config(BaseSettings):
     # LLM设置
     openai_api_key: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
     openai_base_url: Optional[str] = Field(default=None, env="OPENAI_BASE_URL")
-    openai_model: Optional[str] = Field(default="Qwen3-32B", env="OPENAI_MODE")
+    openai_model: Optional[str] = Field(default="minimax-m2.5", env="OPENAI_MODE")
     openai_vl_model: Optional[str] = Field(default="gpt-4o-mini", env="OPENAI_VL_MODEL")
 
     # embedding模型设置
@@ -34,7 +34,7 @@ class Config(BaseSettings):
     # 向量存储设置
     vector_store_type: str = Field(default="chroma", env="VECTOR_STORE_TYPE")
     vector_store_path: str = Field(default="./data/chroma_db", env="VECTOR_STORE_PATH")
-    markitdown_cmd: str = Field(default="/user/local/bin/markitdown", env="MARKITDOWN_CMD")
+    markitdown_cmd: str = Field(default="markitdown", env="MARKITDOWN_CMD")
 
     # 数据库存储设置
     mysql_url: Optional[str] = Field(default=None, env="MYSQL_URL")

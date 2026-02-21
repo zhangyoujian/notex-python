@@ -1,3 +1,4 @@
+import os.path
 import time
 import io
 import uuid
@@ -46,7 +47,7 @@ async def save_user_file(user_id: int, file: UploadFile):
         logger.error(f"Failed to save file: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
 
-    return unique_filename, temp_path.name
+    return unique_filename, str(temp_path)
 
 # 创建路由组
 router = APIRouter(prefix="/api", dependencies=[Depends(get_current_user)])
@@ -80,10 +81,10 @@ async def upload_file(file: UploadFile = File(...),
     from .notebooks import check_notebook_access
     await check_notebook_access(user.id, notebook_id, db)
 
-    unique_filename, temp_path = await save_user_file(user.id, file)
-    content = await vector_service.extract_document(temp_path)
+    unique_filename, full_path = await save_user_file(user.id, file)
+    content = await vector_service.extract_document(full_path)
     metadata_ = {
-        "path": temp_path,
+        "path": os.path.basename(full_path),
         "user_id": user.id
     }
     source = await db_create_source(db,
@@ -111,4 +112,4 @@ async def upload_file(file: UploadFile = File(...),
 
     source.chunk_count = chunk_count
 
-    return success_response(code=status.HTTP_201_CREATED, message="上传成功", data={get_source_info(source)})
+    return success_response(code=status.HTTP_201_CREATED, message="上传成功", data=get_source_info(source))

@@ -5,14 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import configer
 from utils import logger
-from .vector_store import AsyncVectorStore
+from .vector_store import get_vector_service
 from .agent import NotexAgent
 from crud.source import db_list_sources
 
 class NotexServer:
 
     def __init__(self):
-        self.vector_store = AsyncVectorStore()
+        self.vector_store = get_vector_service()
         self.agent = NotexAgent()
         self.lock = asyncio.Lock()
         self.loaded_notex_books = {}
@@ -24,11 +24,11 @@ class NotexServer:
 
             sources = await db_list_sources(db, notebook_id)
             for source in sources:
-                await self.vector_store.ingest_text(notebook_id, source.name, source.content)
+                self.vector_store.ingest_text(notebook_id, source.name, source.content)
 
             self.loaded_notex_books[notebook_id] = True
 
-            stats = await self.vector_store.get_stats()
+            stats = self.vector_store.get_stats()
 
             logger.info(f"✅ notebook {notebook_id} loaded into vector store ({stats.total_documents} total documents)")
 

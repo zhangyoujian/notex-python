@@ -1,5 +1,7 @@
 from sqlalchemy import select, update, desc, delete, asc
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from models.chat import ChatSession, ChatMessage
 
 
@@ -14,8 +16,8 @@ async def db_create_chat_session(db: AsyncSession,
 
 
 async def db_get_chat_session(db: AsyncSession, session_id: str):
-    query = select(ChatSession).where(ChatSession.id == session_id)
-    result = await db.execute(query)
+    stmt = select(ChatSession).where(ChatSession.id == session_id)
+    result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
 

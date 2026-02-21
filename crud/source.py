@@ -58,7 +58,7 @@ async def db_delete_source(db: AsyncSession, source_id: str):
 
 
 async def db_update_source_chunk_count(db: AsyncSession, source_id: str, chunk_count: int):
-    stmt = update(Source).where(id=source_id).values(chunk_count=chunk_count)
+    stmt = update(Source).where(Source.id==source_id).values(chunk_count=chunk_count)
     result = await db.execute(stmt)
     if result.rowcount <= 0:
         logger.error(f"update source chunk count failed.")

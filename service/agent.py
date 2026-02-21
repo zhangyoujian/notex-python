@@ -22,9 +22,28 @@ class NotexAgent:
         logger.warning("No LLM provider configured. Set OPENAI_API_KEY or GOOGLE_API_KEY.")
         return None
 
-    async def generate_chat(self, notebook_id: str, message: str, history: list[ChatMessage]) ->str:
+    async def generate_chat(self, notebook_id: str, message: str, history: list[ChatMessage], context: str) ->str:
 
-        await self.llm.generate_chat(history, message)
+        msg_limit = 10
+        messages = []
+
+        # 1. 添加历史消息（限制数量）
+        history_list = []
+        for msg in history[-msg_limit:]:
+            role = "assistant" if msg.role == "assistant" else "user"
+            messages.append({"role": role, "content": msg.content})
+
+        # 1. 添加上下文作为系统消息（如果存在）
+        if context and context.strip():
+            messages.append({"role": "system", "content": f"以下是相关资料：\n{context}"})
+
+
+        # 3. 添加当前用户消息
+        messages.append({"role": "user", "content": message})
+
+        result = await self.llm.generate_chat(history_list, message)
+
+        return result
 
     async def generate_text(self, prompt: str) -> str:
 

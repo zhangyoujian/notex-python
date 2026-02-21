@@ -204,9 +204,10 @@ async def handle_add_source(notebook_id: str,
     """添加源文件"""
     await check_notebook_access(user.id, notebook_id, db)
     if source_data.url and len(source_data.url) > 0:
-        content = vector_store.extract_from_url(source_data.url)
+        content = await vector_store.extract_from_url(source_data.url)
         source_data.content = content
 
+    metadata_json = json.dumps(source_data.metadata) if source_data.metadata else "{}"
     source = await db_create_source(db,
                                     notebook_id,
                                     source_data.name,
@@ -216,7 +217,7 @@ async def handle_add_source(notebook_id: str,
                                     "",
                                     0,
                                     0,
-                                    source_data.metadata)
+                                    metadata_json)
 
     if source.content != "":
         chunk_count = vector_store.ingest_text(notebook_id, source.name, source.content)
@@ -235,7 +236,7 @@ async def handle_delete_source(notebook_id: str,
     if not source:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
 
-    await check_notebook_access(source.user_id, source.notebook_id, db)
+    await check_notebook_access(user.id, source.notebook_id, db)
 
     await db_delete_source(db, source.id)
 
@@ -437,23 +438,39 @@ async def handle_chat(notebook_id: str,
 
     # Create or get session
     session_id = chat_request.session_id
-    if session_id == "":
+    if not session_id:
         session = await db_create_chat_session(db, notebook_id, "")
         session_id = session.id
 
     # Get session history
     session = await db_get_chat_session(db, session_id)
 
-    # Generate response
-    response = await server.agent.chat(notebook_id, chat_request.message, session.messages)
-    response.session_id = session_id
+    # 知识库检索
+    docs = server.vector_store.similarity_search(notebook_id, chat_request.message)
 
-    sources_ids = []
-    for ids in response.sources:
-        sources_ids.append(ids.id)
+    # 2. 构建上下文文本
+    context_parts = []
+    source_ids_set = set()
+    for doc in docs:
+        context_parts.append(doc.page_content)
+        # 假设文档的 metadata 中包含 source 字段（例如文件名）
+        source = doc.metadata.get("source")
+        if source:
+            source_ids_set.add(source)
+
+    context_text = "\n\n".join(context_parts) if context_parts else ""
+
+    response_text = await server.agent.generate_chat(notebook_id, chat_request.message, session.messages, context_text)
+
+    sources_ids = list(source_ids_set)
 
     await db_add_chat_message(db, session_id, "user", chat_request.message, "")
-    await db_add_chat_message(db, session_id, "assistant", response.message,
-                              json.dump(sources_ids, ensure_ascii=False))
+    await db_add_chat_message(db, session_id, "assistant", response_text, json.dumps(sources_ids, ensure_ascii=False))
 
-    return success_response(message="发送消息成功", data=response)
+    result = {
+        "session_id": session_id,
+        "message": response_text,
+        "sources": sources_ids
+    }
+
+    return success_response(message="发送消息成功", data=result)

@@ -1,6 +1,7 @@
 import os
 
 import aiofiles
+import aiofiles.os
 import asyncio
 import chromadb
 from chromadb.api import Collection, ClientAPI
@@ -88,7 +89,7 @@ class AsyncVectorStore:
     @staticmethod
     def _needs_markitdown(ext: str) -> bool:
         """判断是否需要 markitdown 转换"""
-        markitdown_exts = {".pdf", ".docx", ".doc", ".pptx", ".ppt", ".xlsx", ".xls"}
+        markitdown_exts = {".pdf", ".PDF", ".docx", ".doc", ".pptx", ".ppt", ".xlsx", ".xls"}
         return ext in markitdown_exts
 
     @staticmethod

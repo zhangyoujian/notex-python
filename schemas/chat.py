@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class ChatRequest(BaseModel):
     message: str
-    session_id: str
+    session_id: Optional[str] = None
 
 
 class SourceSummary(BaseModel):

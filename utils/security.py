@@ -2,7 +2,7 @@ import re
 from passlib.context import CryptContext
 
 # 创建密码上下文
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt_sha256"], deprecated="auto")
 
 
 # 密码加密

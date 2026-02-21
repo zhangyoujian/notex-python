@@ -8,7 +8,7 @@ class OpenAIService:
     def __init__(self):
         self.api_key: Optional[str] = configer.openai_api_key
         self.base_url: str = (configer.openai_base_url or "https://api.openai.com/v1").rstrip("/")
-        self.model: str = configer.openai_vl_model or "gpt-3.5-turbo"
+        self.model: str = configer.openai_model or "gpt-3.5-turbo"
         self.timeout = 60
 
         if not self.api_key:
@@ -48,7 +48,13 @@ class OpenAIService:
         if not self.api_key:
             return "Error: OPENAI_API_KEY not set."
 
-        messages = history + [{"role": "user", "content": message}]
+        # 构建消息列表
+        messages = [{"role": "system", "content": "You are a helpful assistant."}]
+
+        if len(history) > 0:
+            messages.extend(history)
+        # 3. 添加当前用户消息
+        messages.append({"role": "user", "content": message})
         payload = {
             "model": self.model,
             "messages": messages,
