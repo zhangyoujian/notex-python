@@ -23,9 +23,8 @@
 
 ## 📖 简介
 
-Notex 是一个**隐私优先**的 AI 知识管理应用，旨在成为 [Google NotebookLM](https://notebooklm.google/) 的开源替代品。
+python-notex 是一个**隐私优先**的 AI 知识管理应用，旨在成为 [Google NotebookLM](https://notebooklm.google/) 的开源替代品。
 
-让你能够从文档中提取洞察、生成摘要、创建学习指南，同时**数据完全掌控在你手中**。
 
 ---
 

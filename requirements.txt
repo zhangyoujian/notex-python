@@ -1,33 +1,39 @@
-aiomysql==0.3.2
-annotated-doc==0.0.4
-annotated-types==0.7.0
-anyio==4.12.0
-bcrypt==3.2.2
-cffi==2.0.0
-click==8.3.1
-cryptography==46.0.3
-fastapi~=0.128.0
-greenlet==3.3.0
-h11==0.16.0
-httptools==0.7.1
-idna==3.11
-passlib==1.7.4
-pycparser==2.23
-pydantic~=2.12.4
-pydantic_core==2.41.5
-PyMySQL==1.1.2
-python-dotenv==1.2.1
-PyYAML==6.0.3
-SQLAlchemy==2.0.45
-starlette~=0.47.3
-typing-inspection==0.4.2
-typing_extensions==4.15.0
-uvicorn~=0.40.0
-uvloop==0.22.1
-watchfiles==1.1.1
-websockets==15.0.1
+# Web Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+starlette>=0.35.0
+python-multipart>=0.0.6
 
-redis~=7.1.0
-pypdf~=6.6.2
-httpx~=0.28.1
-chromadb~=1.4.1
+# Database
+sqlalchemy[asyncio]>=2.0.25
+aiomysql>=0.2.0
+aiosqlite>=0.19.0
+
+# Vector Store
+chromadb>=0.4.22
+
+# Authentication & Security
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.1.2
+
+# File Processing
+aiofiles>=23.2.1
+markitdown>=0.0.1
+
+# AI & LLM
+httpx>=0.26.0
+google-genai>=0.3.0
+
+# Utilities
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+python-dotenv>=1.0.0
+
+# Logging
+loguru>=0.7.2
+
+
+asyncmy>=0.2.11
+
+openai>=2.21.0
