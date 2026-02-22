@@ -1,11 +1,9 @@
 import asyncio
-from typing import List, Dict, Any, Optional
-import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import configer
 from utils import logger
-from .vector_store import get_vector_service
+from .chromadb_vector import get_vector_service
 from .agent import NotexAgent
 from crud.source import db_list_sources
 
@@ -30,7 +28,7 @@ class NotexServer:
 
             stats = self.vector_store.get_stats()
 
-            logger.info(f"✅ notebook {notebook_id} loaded into vector store ({stats.total_documents} total documents)")
+            logger.info(f"notebook {notebook_id} loaded into vector store ({stats.total_documents} total documents)")
 
 notex_server = NotexServer()
 
