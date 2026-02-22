@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class NotebookRequest(BaseModel):
     name: str
-    description: str
+    description: Optional[str] = None
 
 
 class SourceRequest(BaseModel):

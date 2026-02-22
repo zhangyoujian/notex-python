@@ -44,16 +44,17 @@ class OpenAIService:
             logger.error(f"OpenAI chat completion error: {e}")
             return f"Error generating text: {str(e)}"
 
-    async def generate_chat(self, history: List[Dict[str, str]], message: str) -> str:
+    async def generate_chat(self, message: str, context_msg: List[Dict[str, str]]) -> str:
         if not self.api_key:
             return "Error: OPENAI_API_KEY not set."
 
-        # 构建消息列表
+        # 构建系统提示词
         messages = [{"role": "system", "content": "You are a helpful assistant."}]
 
-        if len(history) > 0:
-            messages.extend(history)
-        # 3. 添加当前用户消息
+        if context_msg and len(context_msg) > 0:
+            messages.extend(context_msg)
+
+        # 添加当前用户消息
         messages.append({"role": "user", "content": message})
         payload = {
             "model": self.model,

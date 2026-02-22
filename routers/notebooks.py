@@ -9,7 +9,6 @@ from schemas.notebook import NotebookRequest, SourceRequest, NoteRequest
 from service.database import get_session
 from service.notex_server import NotexServer, get_notex_server
 from service.prompt import get_transformation_prompt
-from service.vector_store import get_vector_service
 from models.users import User
 from models.chat import ChatSession
 from crud.notebooks import *
@@ -19,6 +18,7 @@ from config import configer
 
 from service.auth import get_current_user
 from utils.response import success_response
+from utils.convert import *
 
 router = APIRouter(prefix="/api/notebooks", tags=["notebooks"])
 
@@ -148,7 +148,7 @@ async def handle_update_notebook(notebook_id: str,
     updated_book = await db_update_notebook(db, notebook.id,
                                             notebook_data.name,
                                             notebook_data.description,
-                                            notebook_data.metadata_)
+                                            notebook.metadata_)
 
     return success_response(message="更新笔记本成功", data=get_notebook_info(updated_book))
 
@@ -156,18 +156,22 @@ async def handle_update_notebook(notebook_id: str,
 @router.delete("/{notebook_id}")
 async def handle_delete_notebook(notebook_id: str,
                                  user: User = Depends(get_current_user),
+                                 notex_server: NotexServer = Depends(get_notex_server),
                                  db: AsyncSession = Depends(get_session)):
     """删除笔记本"""
     await check_notebook_access(user.id, notebook_id, db)
 
     await db_delete_notebook(db, notebook_id)
 
+    # 删除向量数据
+    await notex_server.remove_notebook_vector_index(notebook_id)
+
     return success_response(code=status.HTTP_204_NO_CONTENT, message="删除笔记本成功")
 
 
 @router.put("/{notebook_id}/public")
 async def handle_set_notebook_public(notebook_id: str,
-                                     is_public: bool,
+                                     is_public: bool = Body(..., embed=True),
                                      user: User = Depends(get_current_user),
                                      db: AsyncSession = Depends(get_session)):
     """设置笔记本公开状态"""
@@ -200,11 +204,12 @@ async def handle_add_source(notebook_id: str,
                             source_data: SourceRequest,
                             user: User = Depends(get_current_user),
                             db: AsyncSession = Depends(get_session),
-                            vector_store = Depends(get_vector_service)):
+                            notex_server: NotexServer = Depends(get_notex_server)):
     """添加源文件"""
     await check_notebook_access(user.id, notebook_id, db)
+
     if source_data.url and len(source_data.url) > 0:
-        content = await vector_store.extract_from_url(source_data.url)
+        content = await extract_from_url(source_data.url)
         source_data.content = content
 
     metadata_json = json.dumps(source_data.metadata) if source_data.metadata else "{}"
@@ -220,7 +225,7 @@ async def handle_add_source(notebook_id: str,
                                     metadata_json)
 
     if source.content != "":
-        chunk_count = vector_store.ingest_text(notebook_id, source.name, source.content)
+        chunk_count = notex_server.vector_store.ingest_text(notebook_id, source.name, source.content)
         await db_update_source_chunk_count(db, source.id, chunk_count)
 
     return success_response(code=status.HTTP_201_CREATED, message="添加资源成功", data=get_source_info(source))
@@ -230,6 +235,7 @@ async def handle_add_source(notebook_id: str,
 async def handle_delete_source(notebook_id: str,
                                source_id: str,
                                user: User = Depends(get_current_user),
+                               notex_server: NotexServer = Depends(get_notex_server),
                                db: AsyncSession = Depends(get_session)):
     """删除源文件"""
     source = await db_get_source_by_id(db, source_id)
@@ -237,6 +243,9 @@ async def handle_delete_source(notebook_id: str,
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
 
     await check_notebook_access(user.id, source.notebook_id, db)
+
+    # 从向量数据库中移除
+    notex_server.vector_store.delete(notebook_id, source.name)
 
     await db_delete_source(db, source.id)
 
@@ -253,6 +262,8 @@ async def handle_list_notes(notebook_id: str,
     if not notes:
         return success_response(message="获取笔记信息列表成功", data=[])
 
+    await check_notebook_access(user.id, notes.notebook_id, db)
+
     notex_list = []
     for note in notes:
         notex_list.append(get_note_info(note))
@@ -266,6 +277,8 @@ async def handle_create_note(notebook_id: str,
                              user: User = Depends(get_current_user),
                              db: AsyncSession = Depends(get_session)):
     """创建笔记"""
+    await check_notebook_access(user.id, notebook_id, db)
+
     note = await db_create_note(db,
                                 notebook_id,
                                 note_data.title,
@@ -282,6 +295,7 @@ async def handle_delete_note(notebook_id: str,
                              user: User = Depends(get_current_user),
                              db: AsyncSession = Depends(get_session)):
     """删除笔记"""
+    await check_notebook_access(user.id, notebook_id, db)
 
     await db_delete_note(db, note_id)
 
@@ -298,7 +312,10 @@ async def handle_transform(notebook_id: str,
 
     """执行转换"""
     # 按需加载向量索引
+    await check_notebook_access(user.id, notebook_id, db)
+
     await server.load_notebook_vector_index(notebook_id, db)
+
     if not configer.allow_multiple_notes_of_same_type:
         existing_notes = await db_list_notes(db, notebook_id)
         for note in existing_notes:
@@ -355,13 +372,15 @@ async def handle_transform(notebook_id: str,
 
     note = await db_create_note(db, notebook_id, title, response, type_, json.dumps(source_ids), "")
 
-    return success_response(message="生成transofrm成功", data=get_note_info(note))
+    return success_response(message="生成transform成功", data=get_note_info(note))
 
 
 @router.get("/{notebook_id}/chat/sessions")
 async def handle_list_chat_session(notebook_id: str,
                                    user: User = Depends(get_current_user),
                                    db: AsyncSession = Depends(get_session)):
+    await check_notebook_access(user.id, notebook_id, db)
+
     sessions = await db_list_chat_sessions(db, notebook_id)
     if not sessions:
         return success_response("列举会话信息成功", data=[])
@@ -378,6 +397,9 @@ async def handle_create_chat_session(notebook_id: str,
                                      title: str,
                                      user: User = Depends(get_current_user),
                                      db: AsyncSession = Depends(get_session)):
+
+    await check_notebook_access(user.id, notebook_id, db)
+
     session = await db_create_chat_session(db, notebook_id, title)
 
     return success_response(code=status.HTTP_201_CREATED, message="创建新会话成功", data=get_session_info(session))
@@ -388,6 +410,8 @@ async def handle_delete_chat_session(notebook_id: str,
                                      session_id: str,
                                      user: User = Depends(get_current_user),
                                      db: AsyncSession = Depends(get_session)):
+    await check_notebook_access(user.id, notebook_id, db)
+
     await db_delete_chat_session(db, session_id)
 
     return success_response(code=status.HTTP_204_NO_CONTENT, message="删除会话成功")
@@ -400,6 +424,7 @@ async def handle_send_message(notebook_id: str,
                               db: AsyncSession = Depends(get_session),
                               server: NotexServer = Depends(get_notex_server)):
 
+    await check_notebook_access(user.id, notebook_id, db)
 
     await server.load_notebook_vector_index(notebook_id, db)
 
@@ -434,34 +459,35 @@ async def handle_chat(notebook_id: str,
                       db: AsyncSession = Depends(get_session),
                       server: NotexServer = Depends(get_notex_server)):
 
+    await check_notebook_access(user.id, notebook_id, db)
+
     await server.load_notebook_vector_index(notebook_id, db)
 
     # Create or get session
     session_id = chat_request.session_id
     if not session_id:
-        session = await db_create_chat_session(db, notebook_id)
+        title = "New Chat" if len(chat_request.message) == 0 else chat_request.message[:min(32, len(chat_request.message))]
+        session = await db_create_chat_session(db, notebook_id, title=title)
         session_id = session.id
-
-    # Get session history
-    session = await db_get_chat_session(db, session_id)
+    else:
+        # Get session history
+        session = await db_get_chat_session(db, session_id)
 
     # 知识库检索
     docs = server.vector_store.similarity_search(notebook_id, chat_request.message)
 
     # 2. 构建上下文文本
-    context_parts = []
     source_ids_set = set()
-    for doc in docs:
-        context_parts.append(doc.page_content)
-        # 假设文档的 metadata 中包含 source 字段（例如文件名）
-        source = doc.metadata.get("source")
+    context_text = ""
+    for i, doc in enumerate(docs):
+        context_text += f"[来源 {i + 1}] {doc.page_content}\n"
+        source = doc.metadata.get("source", None)
         if source:
             source_ids_set.add(source)
+            context_text += f"来源: {source}\n\n"
 
-    context_text = "\n\n".join(context_parts) if context_parts else ""
-
-
-    response_text = await server.agent.generate_chat(notebook_id, chat_request.message, session.messages, context_text)
+    history_msg = session.messages
+    response_text = await server.agent.generate_chat(notebook_id, chat_request.message, history_msg, context_text)
 
     sources_ids = list(source_ids_set)
 

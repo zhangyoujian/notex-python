@@ -25,23 +25,17 @@ class NotexAgent:
     async def generate_chat(self, notebook_id: str, message: str, history: list[ChatMessage], context: str) ->str:
 
         msg_limit = 10
-        messages = []
+        context_msg = []
 
         # 1. 添加历史消息（限制数量）
-        history_list = []
         for msg in history[-msg_limit:]:
-            role = "assistant" if msg.role == "assistant" else "user"
-            messages.append({"role": role, "content": msg.content})
+            context_msg.append({"role": msg.role, "content": msg.content})
 
-        # 1. 添加上下文作为系统消息（如果存在）
+        # 2. 添加知识库消息
         if context and context.strip():
-            messages.append({"role": "system", "content": f"以下是相关资料：\n{context}"})
+            context_msg.append({"role": "user", "content": f"请根据以下来源内容来回答用户的问题：\n\n{context}"})
 
-
-        # 3. 添加当前用户消息
-        messages.append({"role": "user", "content": message})
-
-        result = await self.llm.generate_chat(history_list, message)
+        result = await self.llm.generate_chat(message, context_msg)
 
         return result
 

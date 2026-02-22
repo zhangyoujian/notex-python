@@ -12,12 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config import configer
 from service.auth import get_current_user
 from service.database import get_session
-from service.vector_store import AsyncVectorStore, get_vector_service
+from service.notex_server import get_notex_server, NotexServer
+
 from utils import logger
 from models.source import Source
 from models.users import User
 from crud.source import db_create_source, db_update_source_chunk_count
 from routers.notebooks import get_source_info
+from utils.convert import extract_from_file
 
 from utils.response import success_response
 
@@ -35,7 +37,7 @@ async def save_user_file(user_id: int, file: UploadFile):
         user_upload_dir.mkdir(parents=True, exist_ok=True)
     except Exception as e:
         logger.error(f"Failed to create user uploads directory: {e}")
-        raise HTTPException(status_code=500, detail="Failed to create uploads directory")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create uploads directory")
 
     # 完整保存路径
     temp_path = user_upload_dir / unique_filename
@@ -44,9 +46,10 @@ async def save_user_file(user_id: int, file: UploadFile):
         async with aiofiles.open(temp_path, "wb") as f:
             await f.write(content)
     except Exception as e:
-        logger.error(f"Failed to save file: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+        logger.error(f"Failed to save file: {unique_filename}, error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to save file: {str(e)}")
 
+    logger.info(f"unique_file: {unique_filename}, full_path: {str(temp_path)}")
     return unique_filename, str(temp_path)
 
 # 创建路由组
@@ -77,12 +80,12 @@ async def upload_file(file: UploadFile = File(...),
                       notebook_id: str = Form(...),
                       user: User = Depends(get_current_user),
                       db: AsyncSession = Depends(get_session),
-                      vector_service: AsyncVectorStore = Depends(get_vector_service)):
+                      notex_server: NotexServer = Depends(get_notex_server)):
     from .notebooks import check_notebook_access
     await check_notebook_access(user.id, notebook_id, db)
 
     unique_filename, full_path = await save_user_file(user.id, file)
-    content = await vector_service.extract_document(full_path)
+    content = await extract_from_file(full_path)
     metadata_ = {
         "path": os.path.basename(full_path),
         "user_id": user.id
@@ -98,15 +101,7 @@ async def upload_file(file: UploadFile = File(...),
                               0,
                               json.dumps(metadata_))
 
-    stats = vector_service.get_stats()
-
-    total_docs_before = stats.total_documents
-
-    vector_service.ingest_text(notebook_id, source.name, source.content)
-
-    stats = vector_service.get_stats()
-
-    chunk_count = stats.total_documents - total_docs_before
+    chunk_count = notex_server.vector_store.ingest_text(notebook_id, source.name, source.content)
 
     await db_update_source_chunk_count(db, source.id, chunk_count)
 

@@ -18,11 +18,11 @@ class Config(BaseSettings):
     # LLM设置
     openai_api_key: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
     openai_base_url: Optional[str] = Field(default=None, env="OPENAI_BASE_URL")
-    openai_model: Optional[str] = Field(default="minimax-m2.5", env="OPENAI_MODE")
+    openai_model: Optional[str] = Field(default="minimax-m2.5", env="OPENAI_MODEL")
     openai_vl_model: Optional[str] = Field(default="gpt-4o-mini", env="OPENAI_VL_MODEL")
 
     # embedding模型设置
-    embedding_model: str = Field(default="text-embedding-3-small", env="EMBEDDING_MODEL")
+    embedding_model_name: str = Field(default="text-embedding-3-small", env="EMBEDDING_MODEL")
     embedding_model_url: str = Field(default="http://localhost:8001/v1", env="EMBEDDING_MODEL_URL")
 
 

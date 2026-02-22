@@ -7,7 +7,6 @@ from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse, JSO
 from routers import auth, api, files, notebooks, public, admin
 from config import configer
 from service.database import async_engine
-from service.vector_store import vector_store
 from models.base import Base
 from contextlib import asynccontextmanager
 from utils.exception_handlers import register_exception_handlers
@@ -32,7 +31,6 @@ async def lifespan(app: FastAPI):
     # 启动时：创建表
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        vector_store.initialize()
     yield
     # 关闭时：清理资源
     await async_engine.dispose()

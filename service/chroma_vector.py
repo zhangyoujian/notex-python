@@ -3,17 +3,17 @@ import uuid
 import chromadb
 from chromadb.api import Collection, ClientAPI
 from chromadb.config import Settings
-from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction,OpenAIEmbeddingFunction
-from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from typing import List, Dict, Any
+
+from sympy.codegen.ast import Raise
+
 from config import configer
 from utils import logger
 from utils.convert import *
-
-
+from .embedding import EmbeddingModel
 
 
 @dataclass
@@ -30,51 +30,21 @@ class VectorStats(BaseModel):
     dimension: int
 
 
-class ChromaVectorStore:
-    """异步向量存储管理器，对标 Go 的 VectorStore"""
+class ChromaVector:
+    """异步向量存储管理器"""
 
-    def __init__(self, is_ollama: bool = False):
-        self.is_ollama = is_ollama
-        self._client: Optional[ClientAPI] = None
-        self._collection: Optional[Collection] = None
-        self._embedding_dim = 1024
-        self._embedding_function = self._create_embedding_function()
+    def __init__(self, is_ollama: bool = False, dist=0.3):
+        self._dist = dist
+        self._embedding_model = EmbeddingModel(configer.embedding_model_url,
+                                               configer.embedding_model_name,
+                                               is_ollama,
+                                               "EMPTY")
 
-
-    def _create_embedding_function(self):
-        """创建 ChromaDB 嵌入函数"""
-        if self.is_ollama:
-            from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
-            self._embedding_dim = 768
-            return OllamaEmbeddingFunction(model_name="nomic-embed-text", url="http://localhost:11434/api/embeddings")
-        elif configer.embedding_model_url != "":
-            self._embedding_dim = 1024
-            return OpenAIEmbeddingFunction(
-                api_key="EMPTY",
-                api_base=configer.embedding_model_url,
-                model_name=configer.embedding_model
-            )
-        else:
-            model = SentenceTransformerEmbeddingFunction(model_name=configer.embedding_model)
-            self._embedding_dim = model._get_model().get_sentence_embedding_dimension()
-            return model
-
-    def initialize(self):
-        """初始化 ChromaDB 异步客户端和集合（每个 notebook 一个集合）"""
         self._client = chromadb.PersistentClient(
             path=configer.vector_store_path,
             settings=Settings(anonymized_telemetry=False)
         )
-        # 这里我们不预创建集合，而是在操作时动态获取/创建
-        # 可设计为根据 notebook_id 管理不同集合，或单集合+过滤
-        # 为保持简单，使用单集合 + 元数据过滤
-        self._collection = self._client.get_or_create_collection(
-            name="notebook_vectors",
-            embedding_function=self._embedding_function,
-            metadata={"hnsw:space": "cosine"}
-        )
 
-    # -------------------- 文本分块--------------------
     @staticmethod
     def _split_text(text: str) -> List[str]:
         """将文本切分为块，支持 CJK 与西文混合"""
@@ -113,15 +83,16 @@ class ChromaVectorStore:
                     break
         return chunks
 
-    # -------------------- 数据摄入）--------------------
+
     async def ingest_documents(self, notebook_id: str, paths: List[str]) -> None:
         """批量摄入文档文件"""
         for path in paths:
-            logger.info(f"[VectorStore] Loading file: {path}")
+            logger.debug(f"[ChromaStore] Loading file: {path}")
             content = await extract_from_file(path)
-            logger.info(f"[VectorStore] File loaded, size: {len(content)} bytes")
+            logger.debug(f"[ChromaStore] File loaded, size: {len(content)} bytes")
             source_name = os.path.basename(path)
             self.ingest_text(notebook_id, source_name, content)
+
 
     def ingest_text(self, notebook_id: str, source_name: str, content: str) -> int:
         """摄入原始文本，分块后存入 ChromaDB"""
@@ -131,30 +102,34 @@ class ChromaVectorStore:
 
         ids = []
         documents = []
-        metadatas_ = []
+        metadatas = []
         for idx, chunk in enumerate(chunks):
             doc_id = f"{notebook_id}::{source_name}::chunk{idx}::{uuid.uuid4().hex[:8]}"
             ids.append(doc_id)
             documents.append(chunk)
-            metadatas_.append({
+            metadatas.append({
                 "notebook_id": notebook_id,
                 "source": source_name,
                 "chunk_index": idx
             })
 
-        # 异步批量添加
-        self._collection.add(documents=documents, metadatas=metadatas_, ids=ids)
-        logger.info(f"[VectorStore] Ingested {len(chunks)} chunks from source '{source_name}'")
+        collection = self._client.get_or_create_collection(name=notebook_id,
+                                                           embedding_function=self._embedding_model.get_embedding_model(),
+                                                           metadata = {"hnsw:space": "cosine"})
+
+        collection.add(documents=documents, metadatas=metadatas, ids=ids)
+        logger.info(f"[ChromaStore] Ingested {len(chunks)} chunks from source '{source_name}'")
         return len(chunks)
 
     # -------------------- 相似性搜索--------------------
-    def similarity_search(self, notebook_id: str, query: str, num_docs: int = 5) -> List[Document]:
+    def similarity_search(self, notebook_id: str, query: str, num_docs: int = 10) -> List[Document]:
         """基于向量相似度的搜索，通过 notebook_id 过滤"""
-        if num_docs <= 0:
-            num_docs = 5
+        collection = self._client.get_collection(name=notebook_id)
+        if not collection:
+            return []
 
         # 查询 ChromaDB
-        results = self._collection.query(
+        results = collection.query(
             query_texts=[query],
             n_results=num_docs,
             where={"notebook_id": notebook_id},
@@ -164,20 +139,29 @@ class ChromaVectorStore:
         # 转换为 Document 列表
         docs = []
         if results["documents"] and results["documents"][0]:
-            for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
-                docs.append(Document(page_content=doc, metadata=meta))
+            for doc, meta, dist in zip(results["documents"][0], results["metadatas"][0], results["distances"][0]):
+                if dist <= self._dist:
+                    docs.append(Document(page_content=doc, metadata=meta))
+
         return docs
 
-    def delete(self, source: str) -> None:
-        self._collection.delete(where={"source": source})
+    def delete(self, notebook_id: str, source: str) -> None:
 
-    def get_stats(self) -> VectorStats:
+        if not source or source == "":
+            self._client.delete_collection(name=notebook_id)
+
+        collection = self._client.get_collection(name=notebook_id)
+        if not collection:
+            raise ValueError(f"[ChromaStore] Collection not found: {notebook_id}")
+
+        collection.delete(where={"source": source})
+
+    def get_stats(self, notebook_id: str) -> VectorStats:
         """获取当前集合的统计信息"""
-        count = self._collection.count()
-        dim = self._embedding_dim
+        collection = self._client.get_collection(name=notebook_id)
+        if not collection:
+            raise ValueError(f"[ChromaStore] Collection not found: {notebook_id}")
+
+        count = collection.count()
+        dim = self._embedding_model.get_embedding_dim()
         return VectorStats(total_documents=count, total_vectors=count, dimension=dim)
-
-vector_store = ChormaVectorStore()
-
-def get_vector_service():
-    return vector_store

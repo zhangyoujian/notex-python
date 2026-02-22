@@ -34,7 +34,7 @@ class GeminiService:
             logger.error(f"Gemini generation error: {e}")
             return f"Error generating text: {str(e)}"
 
-    async def generate_chat(self, history: List[Dict[str, Any]], message: str) -> str:
+    async def generate_chat(self, message: str, context_msg: List[Dict[str, Any]]) -> str:
         """
         history format (旧格式): [{"role": "user", "parts": ["msg"]}, ...]
         转换为新格式: [{"role": "user", "parts": [{"text": "msg"}]}, ...]
@@ -45,7 +45,7 @@ class GeminiService:
         try:
             # 转换历史记录格式以适应 google.genai
             converted_history = []
-            for item in history:
+            for item in context_msg:
                 role = item["role"]
                 # 假设 parts 列表的第一个元素为文本内容
                 parts = [{"text": item["parts"][0]}] if item.get("parts") else []
