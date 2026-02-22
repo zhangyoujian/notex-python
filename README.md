@@ -1,279 +1,253 @@
 # Notex
 
-[中文](./README_CN.md) | English
+[English](./README.md) | [中文](./README_CN.md)
 
-<div align="center">
+<p align="center">
+  <img src="./docs/note2.png" alt="Notex" width="400"/>
+</p>
 
-**A privacy-first, open-source alternative to NotebookLM**
+<p align="center">
+  <a href="https://github.com/zhangyoujian/notex-python">
+    <img src="https://img.shields.io/github/stars/zhangyoujian/notex-python" alt="stars">
+  </a>
+  <a href="https://github.com/zhangyoujian/notex-python/LICENSE">
+    <img src="https://img.shields.io/github/license/zhangyoujian/notex-python" alt="license">
+  </a>
+  <a href="https://img.shields.io/badge/Python-3.12+-3776AB?style=flat&logo=python">
+    <img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=flat&logo=python" alt="Python Version">
+  </a>
+  <a href="https://img.shields.io/badge/FastAPI-009688?style=flat&logo=fastapi">
+    <img src="https://img.shields.io/badge/FastAPI-009688?style=flat&logo=fastapi" alt="FastAPI">
+  </a>
+</p>
 
-[![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=flat&logo=go)](https://golang.org/)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](./LICENSE)
+## 📖 简介
 
-An AI-powered knowledge management application that lets you create intelligent notebooks from your documents.
+Notex 是一个**隐私优先**的 AI 知识管理应用，旨在成为 [Google NotebookLM](https://notebooklm.google/) 的开源替代品。
 
-**Project URL:** https://github.com/smallnest/notex
+让你能够从文档中提取洞察、生成摘要、创建学习指南，同时**数据完全掌控在你手中**。
 
-![](docs/note2.png)
-</div>
+---
 
-- Python clone: [pynotex](https://github.com/Beeta/pynotex)
+## ✨ 特性
 
-## ✨ Features
+### 📚 文档支持
+- **多格式支持**：PDF、TXT、Markdown、DOCX、HTML
+- **多种导入方式**：文件上传、粘贴文本、URL 抓取
+- **智能文档解析**：基于 markitdown 支持复杂文档格式
 
-- 📚 **Multiple Source Types** - Upload PDFs, text files, Markdown, DOCX, and HTML documents
-- 🤖 **AI-Powered Chat** - Ask questions and get answers based on your sources
-- ✨ **Multiple Transformations** - Generate summaries, FAQs, study guides, outlines, timelines, glossaries, quizzes, mindmaps, infographics and podcast scripts
-- 📊 **Infographic Generation** - Create beautiful, hand-drawn style infographics from your content using Google's Gemini Nano Banana
-- 🎙️ **Podcast Generation** - Create engaging podcast scripts from your content
-- 💾 **Full Privacy** - Local SQLite storage, optional cloud backends
-- 🔄 **Multi-Model Support** - Works with OpenAI, Ollama, and other compatible APIs
-- 🎨 **Academic Brutalist Design** - Distinctive, research-focused interface
+### 🤖 AI 功能
+- **RAG 智能对话**：基于文档内容进行智能问答，支持引用来源
+- **向量检索**：Chroma 向量存储，语义搜索更精准
+- **12 种内容转换**：
 
-## 🚀 Quick Start
+| 转换类型 | 说明 |
+|---------|------|
+| 📝 Summary | 综合摘要 |
+| ❓ FAQ | 常见问题解答 |
+| 📚 Study Guide | 学习指南 |
+| 🗂️ Outline | 结构化大纲 |
+| 🎙️ Podcast | 播客脚本 |
+| 📅 Timeline | 时间线 |
+| 📖 Glossary | 术语表 |
+| ✍️ Quiz | 测验题目 |
+| 🧠 Mindmap | Mermaid 思维导图 |
+| 📊 Infographic | 信息图（需 Gemini） |
+| 📑 PPT | 幻灯片（需 Gemini） |
+| 💡 Insight | 深度洞察报告 |
 
-### Prerequisites
+### 🔒 隐私优先
+- **本地存储**：MySQL + Chroma 向量数据库
+- **自主选择模型**：支持 OpenAI、Ollama、DeepSeek、通义千问等
 
-- Go 1.23 or later
-- An LLM API key (OpenAI) or Ollama running locally
+### 🎨 界面
+- **原生 Web 界面**：响应式设计，专注研究的学术风格
+- **完整的认证系统**：支持注册、登录
 
-### Installation
+---
+
+## 🚀 快速开始
+
+### 前置要求
+
+- Python 3.12+
+- MySQL 5.7+ (或使用 SQLite)
+- LLM API Key（OpenAI）或本地运行 Ollama
+
+### 安装
 
 ```bash
-# Clone the repository
-git clone https://github.com/smallnest/notex.git
-cd notex
+# 克隆仓库
+git clone https://github.com/zhangyoujian/notex-python.git
+cd notex-python
 
-# Install dependencies
-go mod tidy
+# 创建虚拟环境
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# venv\Scripts\activate   # Windows
 
-# Run the server
-go run . -server
-```
+# 安装依赖
+pip install -r requirements.txt
 
-Open your browser to `http://localhost:8080`
-
-## ⚙️ Configuration
-
-Notex uses environment variables for configuration. The recommended way to configure the application is to create a `.env` file.
-
-### Step 1: Create Configuration File
-
-Copy the example configuration file to create your local configuration:
-
-```bash
+# 复制配置示例
 cp .env.example .env
+
+# 编辑 .env 配置你的环境变量
 ```
 
-### Step 2: Configure Your LLM Provider
+### 配置 LLM
 
-Edit the `.env` file and configure **one** of the following LLM providers:
+#### 方式一：使用 OpenAI（云端）
 
-#### Option A: Using OpenAI (Cloud-based)
-
-OpenAI provides high-quality models but requires an API key and charges per usage.
-
-1. Get an API key from [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys)
-2. Edit `.env` and configure:
-
-```env
-# OpenAI Configuration
-OPENAI_API_KEY=sk-your-actual-api-key-here
+```bash
+# .env
+OPENAI_API_KEY=sk-your-key-here
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4o-mini
 EMBEDDING_MODEL=text-embedding-3-small
 ```
 
-**Available OpenAI Models:**
-- `gpt-4o-mini` - Fast and cost-effective (recommended)
-- `gpt-4o` - Most capable
-- `gpt-3.5-turbo` - Legacy option
+#### 方式二：使用 Ollama（本地免费）
 
-**Tips:**
-- You can also use compatible OpenAI APIs like Azure OpenAI or other providers by changing `OPENAI_BASE_URL`
-- For example, to use DeepSeek: `OPENAI_BASE_URL=https://api.deepseek.com/v1` and `OPENAI_MODEL=deepseek-chat`
+```bash
+# 先安装 Ollama: https://ollama.com
+# 拉取模型: ollama pull llama3.2
 
-#### Option B: Using Ollama (Local, Free)
-
-Ollama runs locally on your machine and is completely free, but requires a capable computer.
-
-1. Install Ollama from [https://ollama.com](https://ollama.com)
-2. Pull a model (e.g., `ollama pull llama3.2`)
-3. Start Ollama: `ollama serve`
-4. Edit `.env` and configure:
-
-```env
-# Ollama Configuration
+# .env
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.2
 ```
 
-**Available Ollama Models:**
-- `llama3.2` - Recommended balance of speed and quality
-- `qwen2.5` - Excellent for Chinese content
-- `mistral` - Good English performance
-- `codellama` - Specialized for code
-
-**Tips:**
-- Ollama models run entirely on your machine - no data leaves your computer
-- Make sure Ollama is running before starting Notex
-- Larger models require more RAM and CPU
-
-### Step 3: Optional Google Gemini (for Infographics)
-
-To use the infographic generation feature with Google's Gemini Nano Banana:
-
-```env
-GOOGLE_API_KEY=your-google-api-key-here
-```
-
-Get your key from [https://makersuite.google.com/app/apikey](https://makersuite.google.com/app/apikey)
-
-### Step 4: Run the Application
-
-After configuring your `.env` file, simply run:
+#### 方式三：使用国产模型
 
 ```bash
-go run . -server
+# DeepSeek 示例
+OPENAI_API_KEY=sk-your-key
+OPENAI_BASE_URL=https://api.deepseek.com/v1
+OPENAI_MODEL=deepseek-chat
+
+# 通义千问示例
+OPENAI_API_KEY=sk-your-key
+OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+OPENAI_MODEL=qwen-turbo
 ```
 
-The application will automatically load your `.env` configuration and start at `http://localhost:8080`
-
-### Build and Run (Optional)
-
-If you prefer to build a binary instead of using `go run`:
+### 配置数据库
 
 ```bash
-go build -o notex .
-./notex -server
+# 使用 MySQL
+MYSQL_URL=mysql+aiomysql://user:password@localhost:3306/notex
+
+# 或使用 SQLite（默认）
+# 不设置 MYSQL_URL 则使用 SQLite
 ```
 
-## 📖 Usage
-
-### Creating Notebooks
-
-1. Click "New Notebook" in the header
-2. Enter a name and optional description
-3. Click "Create Notebook"
-
-### Adding Sources
-
-You can add content to your notebook in three ways:
-
-**File Upload**
-- Click the "+" button in the Sources panel
-- Drag and drop or browse for files
-- Supported: PDF, TXT, MD, DOCX, HTML
-
-**Paste Text**
-- Select the "Text" tab
-- Enter a title and paste your content
-
-**From URL**
-- Select the "URL" tab
-- Enter the URL and optional title
-
-### Chatting with Sources
-
-1. Switch to the "CHAT" tab
-2. Ask questions about your content
-3. Responses include references to relevant sources
-
-### Transformations
-
-Click any transformation card to generate:
-
-| Transformation | Description                                                  |
-| -------------- | ------------------------------------------------------------ |
-| 📝 Summary      | Condensed overview of your sources                           |
-| ❓ FAQ          | Common questions and answers                                 |
-| 📚 Study Guide  | Educational material with learning objectives                |
-| 🗂️ Outline      | Hierarchical structure of topics                             |
-| 🎙️ Podcast      | Conversational script for audio content                      |
-| 📅 Timeline     | Chronological events from sources                            |
-| 📖 Glossary     | Key terms and definitions                                    |
-| ✍️ Quiz         | Assessment questions with answer key                         |
-| 📊 Infographic  | Hand-drawn style visual representation of your content       |
-| 🧠 Mindmap      | Visual hierarchical diagram of your sources using Mermaid.js |
-
-Or use the custom prompt field for any other transformation.
-
-### Additional Configuration Options
-
-For advanced users, the `.env` file supports additional configuration options:
-
-```env
-# Server Configuration
-SERVER_HOST=0.0.0.0
-SERVER_PORT=8080
-
-# Vector Store (default: sqlite)
-# Options: sqlite, memory, supabase, postgres, redis
-VECTOR_STORE_TYPE=sqlite
-
-# RAG Processing
-MAX_SOURCES=5          # Maximum sources to retrieve for context
-CHUNK_SIZE=1000        # Document chunk size for processing
-CHUNK_OVERLAP=200      # Overlap between chunks
-
-# Document Conversion
-ENABLE_MARKITDOWN=true  # Use Microsoft markitdown for better PDF/DOCX conversion
-
-# Podcast Generation
-ENABLE_PODCAST=true
-PODCAST_VOICE=alloy    # Options: alloy, echo, fable, onyx, nova, shimmer
-
-# Feature Flags
-ALLOW_DELETE=true
-ALLOW_MULTIPLE_NOTES_OF_SAME_TYPE=true
-```
-
-## 🔧 Development
-
-### Running Tests
+### 启动服务
 
 ```bash
-go test -v ./...
+# 启动服务器
+python main.py
+
+# 或使用 uvicorn
+uvicorn main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
-### Building
-
-```bash
-go build -o notex .
-```
-
-### Code Quality
-
-```bash
-# Format
-go fmt ./...
-
-# Lint
-golangci-lint run
-
-# Vet
-go vet ./...
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
-
-Apache License 2.0 - see [LICENSE](./LICENSE) for details.
-
-## 🙏 Acknowledgments
-
-- Inspired by [Google's NotebookLM](https://notebooklm.google.com/)
-- Built with [LangGraphGo](https://github.com/smallnest/langgraphgo)
-- Inspired by [open-notebook](https://github.com/lfnovo/open-notebook)
-
-## 📞 Support
-
-- Report issues on [GitHub](https://github.com/smallnest/notex/issues)
-- Join discussions in the [Notex community](https://github.com/smallnest/notex/discussions)
+访问 [http://localhost:8080](http://localhost:8080)
 
 ---
 
-**Notex** - A privacy-first, open-source alternative to NotebookLM
-https://github.com/smallnest/notex
+## 📁 项目结构
+
+```
+notex-python/
+├── main.py                 # FastAPI 应用入口
+├── config.py               # 配置管理
+├── requirements.txt        # Python 依赖
+├── crud/                   # 数据库 CRUD 操作
+│   ├── auth.py
+│   ├── notebook.py
+│   └── ...
+├── models/                 # SQLAlchemy 模型
+│   ├── base.py
+│   ├── user.py
+│   ├── notebook.py
+│   └── ...
+├── routers/                # API 路由
+│   ├── auth.py            # 认证相关
+│   ├── api.py             # 核心 API
+│   ├── files.py           # 文件上传
+│   ├── notebooks.py       # 笔记本管理
+│   └── ...
+├── schemas/                # Pydantic 请求/响应模型
+├── service/                # 业务服务
+│   ├── database.py        # 数据库连接
+│   ├── vector_store.py    # 向量存储 (Chroma)
+│   ├── llm.py             # LLM 客户端
+│   └── ...
+├── frontend/               # 前端页面
+├── docs/                   # 文档和图片
+└── .env.example            # 配置示例
+```
+
+---
+
+## ⚙️ 配置选项
+
+| 变量 | 说明 | 默认值 |
+|-----|------|-------|
+| `SERVER_HOST` | 服务监听地址 | 0.0.0.0 |
+| `SERVER_PORT` | 服务监听端口 | 8080 |
+| `OPENAI_API_KEY` | OpenAI API Key | - |
+| `OPENAI_BASE_URL` | API 地址 | https://api.openai.com/v1 |
+| `OPENAI_MODEL` | 聊天模型 | minimax-m2.5 |
+| `EMBEDDING_MODEL` | 向量模型 | text-embedding-3-small |
+| `EMBEDDING_MODEL_URL` | 向量模型地址 | http://localhost:8001/v1 |
+| `OLLAMA_BASE_URL` | Ollama 地址 | http://localhost:11434 |
+| `OLLAMA_MODEL` | Ollama 模型 | llama3.2 |
+| `VECTOR_STORE_TYPE` | 向量存储类型 | chroma |
+| `VECTOR_STORE_PATH` | Chroma 数据路径 | ./data/chroma_db |
+| `MYSQL_URL` | MySQL 连接地址 | - |
+| `CHUNK_SIZE` | 文档分块大小 | 1000 |
+| `CHUNK_OVERLAP` | 分块重叠大小 | 200 |
+| `MAX_SOURCES` | RAG 检索最大来源数 | 5 |
+| `GOOGLE_API_KEY` | Gemini API (图片生成) | - |
+
+---
+
+## 📦 技术栈
+
+| 模块 | 技术 |
+|------|------|
+| Web 框架 | FastAPI |
+| 数据库 | MySQL + SQLAlchemy (async) |
+| 向量存储 | Chroma |
+| LLM | OpenAI SDK |
+| 文档解析 | markitdown, PyMuPDF |
+| 前端 | 原生 HTML/JS |
+
+---
+
+
+
+## 📄 许可证
+
+MIT License - 详见 [LICENSE](./LICENSE)
+
+---
+
+## 🙏 致谢
+
+- 灵感来源：[Google NotebookLM](https://notebooklm.google/)
+- 参考项目：[notex](https://github.com/smallnest/notex)
+
+---
+
+## 📞 支持
+
+- 报告问题：[GitHub Issues](https://github.com/zhangyoujian/notex-python/issues)
+
+---
+
+<p align="center">
+  Made with ❤️
+</p>
