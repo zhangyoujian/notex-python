@@ -209,8 +209,11 @@ async def handle_add_source(notebook_id: str,
     await check_notebook_access(user.id, notebook_id, db)
 
     if source_data.url and len(source_data.url) > 0:
-        content = await extract_from_url(source_data.url)
-        source_data.content = content
+        try:
+            content = await extract_from_url(source_data.url)
+            source_data.content = content
+        except RuntimeError as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="无效的URL或者当前URL被禁止爬取")
 
     metadata_json = json.dumps(source_data.metadata) if source_data.metadata else "{}"
     source = await db_create_source(db,
