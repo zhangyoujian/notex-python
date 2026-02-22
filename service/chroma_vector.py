@@ -10,7 +10,6 @@ from typing import List, Dict, Any
 
 from sympy.codegen.ast import Raise
 
-from config import configer
 from utils import logger
 from utils.convert import *
 from .embedding import EmbeddingModel
