@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 from starlette import status
 from fastapi import HTTPException
-from sqlalchemy import select, update, desc
+from sqlalchemy import select, update, desc, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.users import User, UserToken
@@ -20,6 +20,13 @@ async def db_create_user(db: AsyncSession, user_data: RegisterRequest):
     await db.commit()
     await db.refresh(user)  # 从数据库读回最新的 user
     return user
+
+
+async def db_delete_user(db: AsyncSession, user_id: int):
+    stmt = delete(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    await db.commit()
+    return result.rowcount > 0
 
 
 # 根据用户名查询数据库
@@ -113,18 +120,4 @@ async def db_update_user(db: AsyncSession, user_id: int, user_data: UpdateReques
 
     updated_user = await db_get_user_by_user_id(db, user_id)
     return updated_user
-#
-#
-# # 修改密码: 验证旧密码 → 新密码加密 → 修改密码
-# async def db_change_password(db: AsyncSession, user: User, old_password: str, new_password: str):
-#     if not security.verify_password(old_password, user.password):
-#         return False
-#
-#     hashed_new_pwd = security.get_hash_password(new_password)
-#     user.password = hashed_new_pwd
-#     # 更新: 由SQLAlchemy真正接管这个 User 对象，确保可以 commit
-#     # 规避 session 过期或关闭导致的不能提交的问题
-#     db.add(user)
-#     await db.commit()
-#     await db.refresh(user)
-#     return True
+

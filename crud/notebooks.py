@@ -39,9 +39,9 @@ async def db_update_notebook(db: AsyncSession, notebook_id: str, name: str, desc
 
 async def db_set_notebook_public(db: AsyncSession, notebook_id: str, is_public: bool):
     if is_public:
-        stmt = update(Notebook).where(id=notebook_id).values(is_public=1, public_token=generate_uuid)
+        stmt = update(Notebook).where(Notebook.id==notebook_id).values(is_public=1, public_token=generate_uuid())
     else:
-        stmt = update(Notebook).where(id=notebook_id).values(is_public=0, public_token=None)
+        stmt = update(Notebook).where(Notebook.id==notebook_id).values(is_public=0, public_token=None)
 
     result = await db.execute(stmt)
     if result.rowcount <= 0:

@@ -558,6 +558,18 @@ class OpenNotebook {
         }
     }
 
+    async deleteUser(userId) {
+        try {
+            await this.api(`/admin/users/${userId}`, {
+                method: 'DELETE'
+            });
+            this.showToast('用户删除成功', 'success');
+            await this.loadUsers(); // 刷新列表
+        } catch (error) {
+            this.showError('删除用户失败：' + error.message);
+        }
+    }
+
     // 渲染用户表格
     renderUsers(users) {
         const tbody = document.getElementById('usersTableBody');
@@ -569,8 +581,9 @@ class OpenNotebook {
                 <td>${user.email}</td>
                 <td>${user.username}</td>
                 <td>${this.formatDate(user.created_at)}</td>
-                <td>
+                <td class="actions-cell">  <!-- 添加类名 actions-cell -->
                     <button class="btn-edit-user" data-id="${user.id}" data-username="${user.username}" data-email="${user.email}">编辑</button>
+                    <button class="btn-delete-user" data-id="${user.id}" data-email="${user.email}">删除</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -583,6 +596,17 @@ class OpenNotebook {
                 const username = btn.dataset.username;
                 const email = btn.dataset.email;
                 this.showEditUserModal(id, username, email);
+            });
+        });
+
+        // 绑定删除按钮事件
+        document.querySelectorAll('.btn-delete-user').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const userId = btn.dataset.id;
+                const email = btn.dataset.email;
+                if (confirm(`确定要删除用户 ${email} 吗？此操作不可撤销。`)) {
+                    this.deleteUser(userId);
+                }
             });
         });
     }

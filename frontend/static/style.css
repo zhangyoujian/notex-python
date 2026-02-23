@@ -3398,6 +3398,21 @@ body {
     table-layout: fixed;       /* 固定布局，列宽由设定宽度控制 */
 }
 
+/* 调整操作列宽度（从 12% 增加到 15%） */
+.users-table th:nth-child(5),
+.users-table td:nth-child(5) {
+    width: 15%;
+}
+
+/* 操作列单元格使用 Flex 布局，使按钮水平排列并垂直居中 */
+.users-table td.actions-cell {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding-right: 16px;       /* 与上面保持一致，或直接使用上面的选择器 */
+}
+
 /* 表头样式（固定） */
 .users-table thead th {
     position: sticky;
@@ -3419,6 +3434,10 @@ body {
     line-height: 1.4;
 }
 
+.users-table td:nth-child(5) {
+    padding-right: 16px;
+}
+
 /* 列宽分配（根据内容特点） */
 .users-table th:nth-child(1),
 .users-table td:nth-child(1) { width: 8%; }   /* ID */
@@ -3431,21 +3450,42 @@ body {
 .users-table th:nth-child(5),
 .users-table td:nth-child(5) { width: 12%; }  /* 操作（最小宽度） */
 
-/* 操作按钮样式 */
-.btn-edit-user {
-    background: var(--accent-blue, #3b82f6);
-    color: white;
+/* 编辑和删除按钮的公共样式 */
+.btn-edit-user,
+.btn-delete-user {
     border: none;
-    padding: 4px 8px;
-    border-radius: 3px;
+    padding: 4px 12px;      /* 统一内边距 */
+    border-radius: 4px;      /* 稍微圆润的边角 */
     cursor: pointer;
     font-size: 0.8rem;
     transition: background-color 0.2s;
-    white-space: nowrap;       /* 按钮文字不换行 */
-    display: inline-block;
+    white-space: nowrap;     /* 禁止文字换行 */
+    display: inline-flex;    /* 使用 inline-flex 方便内部内容居中 */
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;         /* 最小宽度，保证两个按钮视觉一致 */
+    color: white;
+}
+
+/* 编辑按钮专属颜色 */
+.btn-edit-user {
+    background: var(--accent-blue, #3b82f6);
 }
 .btn-edit-user:hover {
     background: #2563eb;
+}
+
+/* 删除按钮专属颜色 */
+.btn-delete-user {
+    background: var(--accent-red, #ef4444);
+}
+.btn-delete-user:hover {
+    background: #dc2626;
+}
+
+/* 移除之前单独设置的 margin-left（如果有） */
+.btn-delete-user {
+    margin-left: 0;  /* 由 gap 控制间距 */
 }
 
 .thinking-message .message-text {
