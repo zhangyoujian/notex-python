@@ -1,14 +1,12 @@
 import json
 from fastapi import APIRouter, Depends, HTTPException, status, Body
-from typing import List, Optional, Dict, Any
-
+from pathlib import Path
 from crud.chat import db_add_chat_message, db_get_chat_session, db_create_chat_session, db_delete_chat_session, \
     db_list_chat_sessions
 from schemas.chat import ChatRequest
-from schemas.notebook import NotebookRequest, SourceRequest, NoteRequest
+from schemas.notebook import NotebookRequest, SourceRequest, NoteRequest, TransformationRequest
 from service.database import get_session
 from service.notex_server import NotexServer, get_notex_server
-from service.prompt import get_transformation_prompt
 from models.users import User
 from models.chat import ChatSession
 from crud.notebooks import *
@@ -91,6 +89,23 @@ def get_session_info(session: ChatSession):
         "metadata": session.metadata_
     }
 
+def _get_title_for_type(t: str) -> str:
+    """获取转换类型的中文标题"""
+    titles = {
+        "summary": "摘要",
+        "faq": "常见问题解答",
+        "study_guide": "学习指南",
+        "outline": "大纲",
+        "podcast": "播客脚本",
+        "timeline": "时间线",
+        "glossary": "术语表",
+        "quiz": "测验",
+        "infograph": "信息图",
+        "ppt": "幻灯片",
+        "mindmap": "思维导图",
+        "insight": "洞察报告",
+    }
+    return titles.get(t, "笔记")
 
 @router.get("")
 async def handle_list_notebooks(user: User = Depends(get_current_user),
@@ -265,7 +280,7 @@ async def handle_list_notes(notebook_id: str,
     if not notes:
         return success_response(message="获取笔记信息列表成功", data=[])
 
-    await check_notebook_access(user.id, notes.notebook_id, db)
+    await check_notebook_access(user.id, notebook_id, db)
 
     notex_list = []
     for note in notes:
@@ -308,7 +323,7 @@ async def handle_delete_note(notebook_id: str,
 # 转换
 @router.post("/{notebook_id}/transform")
 async def handle_transform(notebook_id: str,
-                           payload: Dict[str, Any] = Body(...),
+                           req: TransformationRequest,
                            user: User = Depends(get_current_user),
                            db: AsyncSession = Depends(get_session),
                            server: NotexServer = Depends(get_notex_server)):
@@ -316,66 +331,103 @@ async def handle_transform(notebook_id: str,
     """执行转换"""
     # 按需加载向量索引
     await check_notebook_access(user.id, notebook_id, db)
-
     await server.load_notebook_vector_index(notebook_id, db)
 
     if not configer.allow_multiple_notes_of_same_type:
         existing_notes = await db_list_notes(db, notebook_id)
         for note in existing_notes:
-            if note.type == payload.get('type', ""):
+            if note.type == req.type:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="该笔记本已存在相同类型的笔记，不允许创建重复类型")
 
     sources = await db_list_sources(db, notebook_id)
-    source_ids = payload.get("source_ids") or []
-    length = payload.get("length") or "medium"
-    format_ = payload.get("format") or "markdown"
-    type_ = payload.get("type", "summary")
 
-    if len(source_ids) > 0:
-        filtered = []
-        source_map = {}
-        for source_id in source_ids:
-            source_map[source_id] = True
-
-        for source in sources:
-            if source_map[source.id]:
-                filtered.append(get_source_info(source))
-
+    if req.source_ids:
+        source_map = {s.id: s for s in sources}
+        sources = [source_map[sid] for sid in req.source_ids if sid in source_map]
     else:
-        payload["source_ids"] = {}
-        index = 0
-        for source in sources:
-            payload["source_ids"][index] = source.id
-            index += 1
+        req.source_ids = [s.id for s in sources]
+    if not sources:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No sources available")
 
-    if len(sources) == 0:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="No sources available")
+    try:
+        response = await server.agent.generate_transformation(req, sources)
+    except Exception as e:
+        logger.error(f"Generation failed: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Generation failed: {e}")
 
-    contents = [s.content or "" for s in sources]
-    ctx = "\n\n".join(contents)
-    instruction = get_transformation_prompt(type_)
-    base_prompt = f"资料如下：\n\n{ctx}\n\n要求：{instruction}\n长度偏好：{length}；格式：{format_}。"
-
-    response = await server.agent.generate_text(base_prompt)
-
-    title_map = {
-        "summary": "摘要",
-        "faq": "常见问题",
-        "study_guide": "学习指南",
-        "outline": "大纲",
-        "ppt": "幻灯片",
-        "glossary": "术语表",
-        "quiz": "测验",
-        "mindmap": "思维导图",
-        "infograph": "信息图",
-        "timeline": "时间线",
-        "custom": "自定义"
+    metadata = {
+        "length": req.length,
+        "format": req.format
     }
-    title = f"{title_map.get(type_, '内容')}"
+    if req.type == "infograph" and server.agent.gemini:
+        try:
+            extra = "**注意：无论来源是什么语言，请务必使用中文**"
+            prompt = response.content + "\n\n" + extra
+            image_path = await server.agent.gemini.generate_image("gemini-3-pro-image-preview", prompt)
+            web_path = "/uploads/" + Path(image_path).name
+            metadata["image_url"] = web_path
+        except Exception as e:
+            logger.error(f"failed to generate infographic image: {e}")
+            metadata["image_error"] = str(e)
 
-    note = await db_create_note(db, notebook_id, title, response, type_, json.dumps(source_ids), "")
+    if req.type == "ppt" and server.agent.gemini:
+        slides = server.agent.parse_ppt_slides(response.content)
+        if len(slides) > 10:
+            logger.error(f"ppt contains too many slides ({len(slides)}), maximum allowed is 20. skipping image generation.")
+            metadata["image_error"] = "PPT页数超过20页上限，已停止生成图片"
+        else:
+            slide_urls = []
+            logger.info(f"generating {len(slides)} slides for ppt...")
 
-    return success_response(message="生成transform成功", data=get_note_info(note))
+            for i, slide in enumerate(slides):
+                logger.info(f"generating image for slide {i + 1}/{len(slides)}...")
+                try:
+                    prompt = f"Style: {slides[0].style}\n\nSlide Content: {slide.content}"
+                    prompt += "\n\n**注意：无论来源是什么语言，请务必使用中文**\n"
+                    image_path = await server.agent.gemini.generate_image("gemini-3-pro-image-preview", prompt)
+                    slide_urls.append("/uploads/" + Path(image_path).name)
+                except Exception as e:
+                    logger.error(f"failed to generate slide {i + 1}: {e}")
+                    continue
+            metadata["slides"] = slide_urls
+
+    # 保存为 note
+    note_content = response.content
+    if req.type == "infograph":
+        note_content = ""  # infograph 只显示图片
+
+    created_note = await db_create_note(db,
+                                        notebook_id,
+                                        _get_title_for_type(req.type),
+                                        note_content,
+                                        req.type,
+                                        json.dumps(req.source_ids, ensure_ascii=False),
+                                        json.dumps(metadata, ensure_ascii=False))
+
+    if req.type == "insight":
+        metadata = {
+            "generated_at": datetime.now().isoformat(),
+            "source_ids": req.source_ids
+        }
+        try:
+            created_insight = await db_create_source(db,
+                                                     notebook_id,
+                                                     "洞察报告",
+                                                     "insight",
+                                                     "",
+                                                     response.content,
+                                                     "",
+                                                     0,
+                                                     0,
+                                                     json.dumps(metadata, ensure_ascii=False)
+                                                     )
+            chunk_count = await server.vector_store.ingest_text(notebook_id, created_insight.name, created_insight.content)
+            await db_update_source_chunk_count(db, created_insight.id, chunk_count)
+        except Exception as e:
+            logger.error(f"failed to create insight source: {e}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"failed to create insight source: {e}")
+            
+    return success_response(message="生成transform成功", data=get_note_info(created_note))
 
 
 @router.get("/{notebook_id}/chat/sessions")
@@ -422,6 +474,7 @@ async def handle_delete_chat_session(notebook_id: str,
 
 @router.post("/{notebook_id}/chat/sessions/{session_id}/messages")
 async def handle_send_message(notebook_id: str,
+                              session_id: str,
                               chat_request: ChatRequest,
                               user: User = Depends(get_current_user),
                               db: AsyncSession = Depends(get_session),
@@ -431,28 +484,37 @@ async def handle_send_message(notebook_id: str,
 
     await server.load_notebook_vector_index(notebook_id, db)
 
-    # Create or get session
-    session_id = chat_request.session_id
-    if session_id == "":
-        session = await db_create_chat_session(db, notebook_id, "")
-        session_id = session.id
+    await db_add_chat_message(db, session_id, "user", chat_request.message, "")
 
-    # Get session history
+    # 获取历史消息
     session = await db_get_chat_session(db, session_id)
 
-    # Generate response
-    response = await server.agent.generate_chat(notebook_id, chat_request.message, session.messages)
-    response.session_id = session_id
+    # 知识库检索
+    docs = server.vector_store.similarity_search(notebook_id, chat_request.message)
 
-    sources_ids = []
-    for ids in response.sources:
-        sources_ids.append(ids.id)
+    # 2. 构建上下文文本
+    source_ids_set = set()
+    context_text = ""
+    for i, doc in enumerate(docs):
+        context_text += f"[来源 {i + 1}] {doc.page_content}\n"
+        source = doc.metadata.get("source", None)
+        if source:
+            source_ids_set.add(source)
+            context_text += f"来源: {source}\n\n"
 
-    await db_add_chat_message(db, session_id, "user", chat_request.message, "")
-    await db_add_chat_message(db, session_id, "assistant", response.message, json.dumps(sources_ids, ensure_ascii=False))
+    history_msg = session.messages
+    sources_ids = list(source_ids_set)
 
+    response = await server.agent.generate_chat(notebook_id, chat_request.message, history_msg, context_text)
 
-    return success_response(message="发送消息成功", data=response)
+    await db_add_chat_message(db, session_id, "assistant", response, json.dumps(sources_ids, ensure_ascii=False))
+
+    result = {
+        "session_id": session_id,
+        "message": response,
+        "sources": sources_ids
+    }
+    return success_response(message="发送消息成功", data=result)
 
 
 @router.post("/{notebook_id}/chat")
@@ -502,5 +564,4 @@ async def handle_chat(notebook_id: str,
         "message": response_text,
         "sources": sources_ids
     }
-
     return success_response(message="发送消息成功", data=result)
