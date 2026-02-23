@@ -1,20 +1,68 @@
+import hashlib
 import re
-from passlib.context import CryptContext
+import bcrypt
 
-# 创建密码上下文
-pwd_context = CryptContext(schemes=["bcrypt_sha256"], deprecated="auto")
+def verify_bcrypt(plain_password: str, hashed_password: str) -> bool:
+    password_bytes = plain_password.encode('utf-8')
+    # 去掉前缀
+    hashed = hashed_password.replace("$bcrypt$", "")
+    hashed_bytes = hashed.encode('utf-8')
+    return bcrypt.checkpw(password_bytes, hashed_bytes)
 
 
-# 密码加密
-def get_hash_password(password: str):
-    return pwd_context.hash(password)
+
+def verify_argon2(plain_password: str, hashed_password: str) -> bool:
+    """验证 argon2 哈希"""
+    try:
+        import argon2
+        ph = argon2.PasswordHasher()
+        # 去掉前缀
+        hash_str = hashed_password.replace("$argon2$", "")
+        ph.verify(hash_str, plain_password)
+        return True
+    except argon2.exceptions.VerifyMismatchError:
+        return False
+    except Exception:
+        return False
 
 
-# 密码验证: verify 返回值是布尔型
+def get_hash_password(password: str, algorithm="bcrypt"):
+    password_bytes = password.encode('utf-8')
+
+    if algorithm == "bcrypt":
+        # bcrypt 自动生成盐值，工作因子12（可调整）
+        salt = bcrypt.gensalt(rounds=12)
+        hashed = bcrypt.hashpw(password_bytes, salt)
+        return f"$bcrypt${hashed.decode('utf-8')}"
+
+    elif algorithm == "argon2":
+        import argon2
+        ph = argon2.PasswordHasher(
+            time_cost=2,  # 迭代次数
+            memory_cost=65536,  # 内存消耗 (64MB)
+            parallelism=4,  # 并行度
+            hash_len=32,
+            salt_len=16
+        )
+        hashed = ph.hash(password)
+        return f"$argon2${hashed}"
+
+    return None
+
+
 def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
 
-def check_password_complexity(password: str, min_length: int = 6,
+    if not plain_password or not hashed_password:
+        return False
+
+    if hashed_password.startswith("$bcrypt$"):
+        return verify_bcrypt(plain_password, hashed_password)
+    elif hashed_password.startswith("$argon2$"):
+        return verify_argon2(plain_password, hashed_password)
+    else:
+        return False
+
+def check_password_complexity(password: str, min_length: int = 8,
                               require_letter: bool = True,
                               require_digit: bool = True,
                               require_upper: bool = False,
