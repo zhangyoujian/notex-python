@@ -1890,9 +1890,30 @@ class OpenNotebook {
         console.log('viewNote - image_url:', note.metadata?.image_url);
         console.log('viewNote - currentPublicToken:', this.currentPublicToken);
 
+        const processNoteContent = (content) => {
+        const thinkMatch = content.match(/^(.*?)<think>(.*?)<\/think>(.*)$/s);
+        if (thinkMatch) {
+                const before = thinkMatch[1];
+                const think = thinkMatch[2];
+                const after = thinkMatch[3];
+                const fullAnswer = before + after;
+                const answerHtml = marked.parse(fullAnswer);
+                const thinkHtml = marked.parse(think);
+                return `
+                    ${answerHtml}
+                    <details class="think-details">
+                        <summary>查看推理过程</summary>
+                        <div class="thinking-part">${thinkHtml}</div>
+                    </details>
+                `;
+            } else {
+                return marked.parse(content);
+            }
+        };
+
         // Rewrite image URLs for public notebooks
-        const content = this.rewriteImageUrlsForPublic(note.content);
-        const renderedContent = marked.parse(content);
+        const contentToProcess = this.rewriteImageUrlsForPublic(note.content);
+        const processedContent = processNoteContent(contentToProcess);
 
         // 信息图错误提示 HTML
         let infographicErrorHTML = '';
@@ -2006,7 +2027,7 @@ class OpenNotebook {
                     ${infographicErrorHTML}
                     ${infographicHTML}
                     ${pptSliderHTML}
-                    <div class="markdown-content" style="${showMarkdownContent ? '' : 'display:none'}">${renderedContent}</div>
+                    <div class="markdown-content" style="${showMarkdownContent ? '' : 'display:none'}">${processedContent}</div>
                 </div>
             </div>
         `;
@@ -2401,10 +2422,11 @@ class OpenNotebook {
 
         if (!message) return;
 
+        // 1. 先显示用户消息
         this.addMessage('user', message);
         input.value = '';
 
-        // 2. 添加一个临时“思考中”消息
+        // 2. 立即显示“思考中”提示
         const thinkingId = 'thinking-message-' + Date.now();
         const thinkingDiv = document.createElement('div');
         thinkingDiv.id = thinkingId;
@@ -2419,15 +2441,22 @@ class OpenNotebook {
         document.getElementById('chatMessages').appendChild(thinkingDiv);
         document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
 
-        const sources = await this.api(`/notebooks/${this.currentNotebook.id}/sources`);
-        if (sources.length === 0) {
-            this.addMessage('assistant', '请先为笔记本添加一些来源。');
-            return;
-        }
-
         this.setStatus('思考中...');
 
         try {
+            // 3. 获取来源列表（检查是否有材料）
+            const sources = await this.api(`/notebooks/${this.currentNotebook.id}/sources`);
+
+            // 4. 如果没有来源，立即移除“思考中”并提示
+            if (sources.length === 0) {
+                const thinkingMsg = document.getElementById(thinkingId);
+                if (thinkingMsg) thinkingMsg.remove();
+                this.addMessage('assistant', '请先为笔记本添加一些来源。');
+                this.setStatus('就绪');
+                return;
+            }
+
+            // 5. 有来源，继续发送聊天请求
             const response = await this.api(`/notebooks/${this.currentNotebook.id}/chat`, {
                 method: 'POST',
                 body: JSON.stringify({
@@ -2436,6 +2465,7 @@ class OpenNotebook {
                 }),
             });
 
+            // 6. 移除“思考中”并显示真实回复
             const thinkingMsg = document.getElementById(thinkingId);
             if (thinkingMsg) thinkingMsg.remove();
 
@@ -2443,6 +2473,7 @@ class OpenNotebook {
             this.currentChatSession = response.session_id;
             this.setStatus('就绪');
         } catch (error) {
+            // 7. 出错时也移除“思考中”
             const thinkingMsg = document.getElementById(thinkingId);
             if (thinkingMsg) thinkingMsg.remove();
             this.addMessage('assistant', `错误: ${error.message}`);
