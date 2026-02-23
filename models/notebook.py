@@ -82,7 +82,7 @@ class Notebook(Base):
 
     # 主键 - 使用UUID字符串
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: generate_uuid(), comment="笔记本ID")
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, comment="所属用户ID")
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, comment="所属用户ID")
     name: Mapped[str] = mapped_column(String(255), nullable=False, comment="笔记本名称")
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="笔记本描述")
     is_public: Mapped[int] = mapped_column(Integer, default=0, nullable=False, comment="是否公开")
