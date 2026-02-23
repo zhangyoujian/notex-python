@@ -37,3 +37,5 @@ loguru>=0.7.2
 asyncmy>=0.2.11
 
 openai>=2.21.0
+
+markitdown[all]

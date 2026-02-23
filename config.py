@@ -1,91 +1,105 @@
 import os
+from dataclasses import dataclass, field
 from typing import Optional
-from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
+from pathlib import Path
 
-# 加载环境变量
-load_dotenv()
+# 加载 .env 文件（使用绝对路径确保找到）
+env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=env_path, override=True)
 
 
-class Config(BaseSettings):
-    """配置类"""
+def _get_env_bool(key: str, default: bool) -> bool:
+    """从环境变量读取布尔值，支持 true/false、1/0 等"""
+    val = os.getenv(key)
+    if val is None:
+        return default
+    return val.lower() in ("true", "1", "yes", "on")
 
+
+def _get_env_int(key: str, default: int) -> int:
+    """读取整数环境变量"""
+    val = os.getenv(key)
+    if val is None:
+        return default
+    try:
+        return int(val)
+    except ValueError:
+        return default
+
+
+def _get_env_str(key: str, default: str) -> str:
+    """读取字符串环境变量，None 时返回默认值"""
+    val = os.getenv(key)
+    return val if val is not None else default
+
+
+@dataclass
+class Config:
     # 服务器设置
-    server_host: str = Field(default="0.0.0.0", env="SERVER_HOST")
-    server_port: int = Field(default=8080, env="SERVER_PORT")
+    server_host: str = "0.0.0.0"
+    server_port: int = 8080
 
     # LLM设置
-    openai_api_key: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
-    openai_base_url: Optional[str] = Field(default=None, env="OPENAI_BASE_URL")
-    openai_model: Optional[str] = Field(default="minimax-m2.5", env="OPENAI_MODEL")
-    openai_vl_model: Optional[str] = Field(default="gpt-4o-mini", env="OPENAI_VL_MODEL")
+    openai_api_key: Optional[str] = None
+    openai_base_url: Optional[str] = None
+    openai_model: str = "minimax-m2.5"
+    openai_vl_model: str = "gpt-4o-mini"
 
     # embedding模型设置
-    embedding_model_name: str = Field(default="text-embedding-3-small", env="EMBEDDING_MODEL")
-    embedding_model_url: str = Field(default="http://localhost:8001/v1", env="EMBEDDING_MODEL_URL")
+    embedding_model_name: str = "text-embedding-3-small"
+    embedding_model_url: str = "http://localhost:8001/v1"
 
+    google_api_key: Optional[str] = None
 
-    google_api_key: Optional[str] = Field(default=None, env="GOOGLE_API_KEY")
-
-    ollama_base_url: str = Field(default="http://localhost:11434", env="OLLAMA_BASE_URL")
-    ollama_model: str = Field(default="llama3.2", env="OLLAMA_MODEL")
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "llama3.2"
 
     # 向量存储设置
-    vector_store_type: str = Field(default="chroma", env="VECTOR_STORE_TYPE")
-    vector_store_path: str = Field(default="./data/chroma_db", env="VECTOR_STORE_PATH")
-    markitdown_cmd: str = Field(default="markitdown", env="MARKITDOWN_CMD")
+    vector_store_type: str = "chroma"
+    vector_store_path: str = "./data/chroma_db"
+    markitdown_cmd: str = "markitdown"
 
     # 数据库存储设置
-    mysql_url: Optional[str] = Field(default=None, env="MYSQL_URL")
+    mysql_url: Optional[str] = None
 
     # 缓存存储设置
-    redis_url: str = Field(default=None, env="REDIS_URL")
+    redis_url: Optional[str] = None
 
     # 应用设置
-    max_sources: int = Field(default=5, env="MAX_SOURCES")
-    max_context_length: int = Field(default=128000, env="MAX_CONTEXT_LENGTH")
-    chunk_size: int = Field(default=1000, env="CHUNK_SIZE")
-    chunk_overlap: int = Field(default=200, env="CHUNK_OVERLAP")
+    max_sources: int = 5
+    max_context_length: int = 128000
+    chunk_size: int = 1000
+    chunk_overlap: int = 200
 
     # 日志设置
-    log_path: str = Field(default="./logs/notex.log", env="LOG_PATH")
-    log_level: str = Field(default="info", env="LOG_LEVEL")
+    log_path: str = "./logs/notex.log"
+    log_level: str = "info"
 
     # 上传文件路径
-    upload_path: str = Field(default="./data/uploads", env="UPLOAD_PATH")
+    upload_path: str = "./data/uploads"
 
     # AES 加密算法依赖的秘钥
-    aes_key: str = Field(default=None, env="AES_KEY")
+    aes_key: Optional[str] = None
 
     # 播客生成
-    enable_podcast: bool = Field(default=True, env="ENABLE_PODCAST")
-    podcast_voice: str = Field(default="alloy", env="PODCAST_VOICE")
+    enable_podcast: bool = True
+    podcast_voice: str = "alloy"
 
     # 文档转换
-    enable_markitdown: bool = Field(default=True, env="ENABLE_MARKITDOWN")
+    enable_markitdown: bool = True
 
     # 演示设置
-    allow_delete: bool = Field(default=True, env="ALLOW_DELETE")
-    allow_multiple_notes_of_same_type: bool = Field(default=True, env="ALLOW_MULTIPLE_NOTES_OF_SAME_TYPE")
+    allow_delete: bool = True
+    allow_multiple_notes_of_same_type: bool = True
 
     # LangSmith跟踪（可选）
-    langchain_api_key: Optional[str] = Field(default=None, env="LANGCHAIN_API_KEY")
-    langchain_project: str = Field(default="open-notebook", env="LANGCHAIN_PROJECT")
+    langchain_api_key: Optional[str] = None
+    langchain_project: str = "open-notebook"
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"
-
-    @field_validator("openai_base_url")
-    def set_openai_base_url(cls, v, values):
-        """自动检测提供者"""
-        if v is None and "openai_model" in values:
-            model = values.get("openai_model", "")
-            if "ollama" in model.lower() or "llama" in model.lower():
-                return values.get("ollama_base_url", "http://localhost:11434")
-        return v
+    # 以下字段在验证时使用，但原类中未定义，若需要可添加
+    supabase_url: Optional[str] = None
+    supabase_key: Optional[str] = None
 
     @property
     def is_ollama(self) -> bool:
@@ -95,9 +109,7 @@ class Config(BaseSettings):
     def supports_function_calling(self) -> bool:
         """是否支持函数调用"""
         if self.is_ollama:
-            return True  # 大多数Ollama模型现在支持工具调用
-
-        # OpenAI支持函数调用的模型
+            return True
         supporting_models = ["gpt-4", "gpt-3.5-turbo"]
         for model in supporting_models:
             if model in self.openai_model:
@@ -105,31 +117,83 @@ class Config(BaseSettings):
         return "gpt-4" in self.openai_model or "gpt-3.5-turbo" in self.openai_model
 
 
+def load_config() -> Config:
+    """从环境变量加载配置，并返回 Config 实例"""
+    conf = Config()
+
+    # 从环境变量覆盖默认值
+    conf.server_host = _get_env_str("SERVER_HOST", conf.server_host)
+    conf.server_port = _get_env_int("SERVER_PORT", conf.server_port)
+
+    conf.openai_api_key = _get_env_str("OPENAI_API_KEY", conf.openai_api_key)
+    conf.openai_base_url = _get_env_str("OPENAI_BASE_URL", conf.openai_base_url)
+    conf.openai_model = _get_env_str("OPENAI_MODEL", conf.openai_model)
+    conf.openai_vl_model = _get_env_str("OPENAI_VL_MODEL", conf.openai_vl_model)
+
+    conf.embedding_model_name = _get_env_str("EMBEDDING_MODEL", conf.embedding_model_name)
+    conf.embedding_model_url = _get_env_str("EMBEDDING_MODEL_URL", conf.embedding_model_url)
+
+    conf.google_api_key = _get_env_str("GOOGLE_API_KEY", conf.google_api_key)
+
+    conf.ollama_base_url = _get_env_str("OLLAMA_BASE_URL", conf.ollama_base_url)
+    conf.ollama_model = _get_env_str("OLLAMA_MODEL", conf.ollama_model)
+
+    conf.vector_store_type = _get_env_str("VECTOR_STORE_TYPE", conf.vector_store_type)
+    conf.vector_store_path = _get_env_str("VECTOR_STORE_PATH", conf.vector_store_path)
+    conf.markitdown_cmd = _get_env_str("MARKITDOWN_CMD", conf.markitdown_cmd)
+
+    conf.mysql_url = _get_env_str("MYSQL_URL", conf.mysql_url)
+    conf.redis_url = _get_env_str("REDIS_URL", conf.redis_url)
+
+    conf.max_sources = _get_env_int("MAX_SOURCES", conf.max_sources)
+    conf.max_context_length = _get_env_int("MAX_CONTEXT_LENGTH", conf.max_context_length)
+    conf.chunk_size = _get_env_int("CHUNK_SIZE", conf.chunk_size)
+    conf.chunk_overlap = _get_env_int("CHUNK_OVERLAP", conf.chunk_overlap)
+
+    conf.log_path = _get_env_str("LOG_PATH", conf.log_path)
+    conf.log_level = _get_env_str("LOG_LEVEL", conf.log_level)
+
+    conf.upload_path = _get_env_str("UPLOAD_PATH", conf.upload_path)
+
+    conf.aes_key = _get_env_str("AES_KEY", conf.aes_key)
+
+    conf.enable_podcast = _get_env_bool("ENABLE_PODCAST", conf.enable_podcast)
+    conf.podcast_voice = _get_env_str("PODCAST_VOICE", conf.podcast_voice)
+
+    conf.enable_markitdown = _get_env_bool("ENABLE_MARKITDOWN", conf.enable_markitdown)
+
+    conf.allow_delete = _get_env_bool("ALLOW_DELETE", conf.allow_delete)
+    conf.allow_multiple_notes_of_same_type = _get_env_bool(
+        "ALLOW_MULTIPLE_NOTES_OF_SAME_TYPE", conf.allow_multiple_notes_of_same_type
+    )
+
+    conf.langchain_api_key = _get_env_str("LANGCHAIN_API_KEY", conf.langchain_api_key)
+    conf.langchain_project = _get_env_str("LANGCHAIN_PROJECT", conf.langchain_project)
+
+    # 额外读取 supabase 相关变量（用于验证）
+    conf.supabase_url = _get_env_str("SUPABASE_URL", conf.supabase_url)
+    conf.supabase_key = _get_env_str("SUPABASE_KEY", conf.supabase_key)
+
+    # 验证配置
+    validate_config(conf)
+
+    return conf
+
+
 def validate_config(config: Config) -> None:
-    """验证配置"""
+    """验证配置有效性"""
     has_openai = bool(config.openai_api_key)
     has_ollama = config.is_ollama
 
     if not has_openai and not has_ollama:
         raise ValueError("必须设置 OPENAI_API_KEY 或 OLLAMA_BASE_URL")
 
-    # 验证向量存储配置
     if config.vector_store_type == "supabase":
         if not config.supabase_url or not config.supabase_key:
-            raise ValueError("SUPABASE_URL 和 SUPABASE_KEY 对于supabase向量存储是必需的")
+            raise ValueError("SUPABASE_URL 和 SUPABASE_KEY 对于 supabase 向量存储是必需的")
     elif config.vector_store_type not in ["chroma", "memory"]:
         raise ValueError(f"未知的向量存储类型: {config.vector_store_type}")
 
 
-def load_config() -> Config:
-    """加载配置"""
-    conf_ = Config()
-
-    # 验证配置
-    validate_config(conf_)
-
-    return conf_
-
-
+# 导出单例
 configer = load_config()
-
