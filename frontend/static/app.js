@@ -797,6 +797,8 @@ class OpenNotebook {
         // Also remove token cookie
         document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
 
+        // 清除缓存中的笔记本数据
+        this.cache.delete('notebooks');   // 关键修复
         this.updateAuthUI();
 
         // Clear data
