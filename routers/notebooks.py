@@ -260,7 +260,7 @@ async def handle_add_source(notebook_id: str,
                                     metadata_json)
 
     if source.content != "":
-        chunk_count = notex_server.vector_store.ingest_text(notebook_id, source.name, source.content)
+        chunk_count = await notex_server.vector_store.ingest_text(notebook_id, source.name, source.content)
         await db_update_source_chunk_count(db, source.id, chunk_count)
 
     return success_response(code=status.HTTP_201_CREATED, message="添加资源成功", data=get_source_info(source))
@@ -280,7 +280,7 @@ async def handle_delete_source(notebook_id: str,
     await check_notebook_access(user.id, source.notebook_id, db)
 
     # 从向量数据库中移除
-    notex_server.vector_store.delete(notebook_id, source.name)
+    await notex_server.vector_store.delete(notebook_id, source.name)
 
     await db_delete_source(db, source.id)
 
@@ -507,7 +507,7 @@ async def handle_send_message(notebook_id: str,
     session = await db_get_chat_session(db, session_id)
 
     # 知识库检索
-    docs = server.vector_store.similarity_search(notebook_id, chat_request.message)
+    docs = await server.vector_store.similarity_search(notebook_id, chat_request.message)
 
     # 2. 构建上下文文本
     source_ids_set = set()
@@ -556,7 +556,7 @@ async def handle_chat(notebook_id: str,
         session = await db_get_chat_session(db, session_id)
 
     # 知识库检索
-    docs = server.vector_store.similarity_search(notebook_id, chat_request.message)
+    docs = await server.vector_store.similarity_search(notebook_id, chat_request.message)
 
     # 2. 构建上下文文本
     source_ids_set = set()

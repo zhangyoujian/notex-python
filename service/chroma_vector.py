@@ -1,14 +1,9 @@
-import os
-import uuid
 import chromadb
-from chromadb.api import Collection, ClientAPI
 from chromadb.config import Settings
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from typing import List, Dict, Any
-
-from sympy.codegen.ast import Raise
+from concurrent.futures import ThreadPoolExecutor
 
 from utils import logger
 from utils.convert import *
@@ -34,6 +29,7 @@ class ChromaVector:
 
     def __init__(self, is_ollama: bool = False, dist=0.3):
         self._dist = dist
+        self._executor = ThreadPoolExecutor(max_workers=4)
         self._embedding_model = EmbeddingModel(configer.embedding_model_url,
                                                configer.embedding_model_name,
                                                is_ollama,
@@ -90,10 +86,22 @@ class ChromaVector:
             content = await extract_from_file(path)
             logger.debug(f"[ChromaStore] File loaded, size: {len(content)} bytes")
             source_name = os.path.basename(path)
-            self.ingest_text(notebook_id, source_name, content)
+            await self.ingest_text(notebook_id, source_name, content)
+
+    def _sync_ingest(self, notebook_id, source_name, chunks):
+        # 同步执行 add 操作
+        collection = self._client.get_or_create_collection(
+            name=notebook_id,
+            embedding_function=self._embedding_model.get_embedding_model(),
+            metadata={"hnsw:space": "cosine"}
+        )
+        ids = [f"{notebook_id}::{source_name}::chunk{idx}::{uuid.uuid4().hex[:8]}" for idx in range(len(chunks))]
+        metadatas = [{"notebook_id": notebook_id, "source": source_name, "chunk_index": idx} for idx in
+                     range(len(chunks))]
+        collection.add(documents=chunks, metadatas=metadatas, ids=ids)
 
 
-    def ingest_text(self, notebook_id: str, source_name: str, content: str) -> int:
+    async def ingest_text(self, notebook_id: str, source_name: str, content: str) -> int:
         """摄入原始文本，分块后存入 ChromaDB"""
         chunks = self._split_text(content)
         if not chunks:
@@ -112,16 +120,11 @@ class ChromaVector:
                 "chunk_index": idx
             })
 
-        collection = self._client.get_or_create_collection(name=notebook_id,
-                                                           embedding_function=self._embedding_model.get_embedding_model(),
-                                                           metadata = {"hnsw:space": "cosine"})
-
-        collection.add(documents=documents, metadatas=metadatas, ids=ids)
-        logger.info(f"[ChromaStore] Ingested {len(chunks)} chunks from source '{source_name}'")
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(self._executor, self._sync_ingest, notebook_id, source_name, chunks)
         return len(chunks)
 
-    # -------------------- 相似性搜索--------------------
-    def similarity_search(self, notebook_id: str, query: str, num_docs: int = 10) -> List[Document]:
+    def _similarity_search(self, notebook_id: str, query: str, num_docs: int = 10) -> List[Document]:
         """基于向量相似度的搜索，通过 notebook_id 过滤"""
         collection = self._client.get_collection(name=notebook_id)
         if not collection:
@@ -141,11 +144,15 @@ class ChromaVector:
             for doc, meta, dist in zip(results["documents"][0], results["metadatas"][0], results["distances"][0]):
                 if dist <= self._dist:
                     docs.append(Document(page_content=doc, metadata=meta))
+        return docs
+
+    async def similarity_search(self, notebook_id: str, query: str, num_docs: int = 10) -> List[Document]:
+        loop = asyncio.get_running_loop()
+        docs = await loop.run_in_executor(self._executor, self._similarity_search, notebook_id, query, num_docs)
 
         return docs
 
-    def delete(self, notebook_id: str, source: str) -> None:
-
+    async def _delete(self, notebook_id: str, source: str) -> None:
         if not source or source == "":
             self._client.delete_collection(name=notebook_id)
 
@@ -155,7 +162,11 @@ class ChromaVector:
 
         collection.delete(where={"source": source})
 
-    def get_stats(self, notebook_id: str) -> VectorStats:
+    async def delete(self, notebook_id: str, source: str) -> None:
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(self._executor, self.delete, notebook_id, source)
+
+    def _get_stats(self, notebook_id: str) -> VectorStats:
         """获取当前集合的统计信息"""
         collection = self._client.get_collection(name=notebook_id)
         if not collection:
@@ -164,3 +175,12 @@ class ChromaVector:
         count = collection.count()
         dim = self._embedding_model.get_embedding_dim()
         return VectorStats(total_documents=count, total_vectors=count, dimension=dim)
+
+    async def get_stats(self, notebook_id: str) -> VectorStats:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            self._executor,
+            self._get_stats,
+            notebook_id
+        )
+

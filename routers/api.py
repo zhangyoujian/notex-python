@@ -101,7 +101,7 @@ async def upload_file(file: UploadFile = File(...),
                               0,
                               json.dumps(metadata_))
 
-    chunk_count = notex_server.vector_store.ingest_text(notebook_id, source.name, source.content)
+    chunk_count = await notex_server.vector_store.ingest_text(notebook_id, source.name, source.content)
 
     await db_update_source_chunk_count(db, source.id, chunk_count)
 

@@ -24,20 +24,19 @@ class NotexServer:
 
             sources = await db_list_sources(db, notebook_id)
             for source in sources:
-                self.vector_store.ingest_text(notebook_id, source.name, source.content)
+                await self.vector_store.ingest_text(notebook_id, source.name, source.content)
 
             self.loaded_notex_books[notebook_id] = True
 
-            stats = self.vector_store.get_stats(notebook_id)
+            stats = await self.vector_store.get_stats(notebook_id)
 
             logger.info(f"notebook {notebook_id} loaded into vector store ({stats.total_documents} total documents)")
 
     async def remove_notebook_vector_index(self, notebook_id: str):
         async with self.lock:
-            if self.loaded_notex_books.get(notebook_id, True):
+            if self.loaded_notex_books.get(notebook_id, False):
                 self.loaded_notex_books.pop(notebook_id)
-
-            self.vector_store.delete(notebook_id, "")
+                await self.vector_store.delete(notebook_id, "")
 
 
 notex_server = NotexServer()
