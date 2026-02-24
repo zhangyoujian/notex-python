@@ -20,12 +20,26 @@ router = APIRouter(prefix="/public", tags=["public"])
 
 @router.get("/notebooks")
 async def handle_list_public_notebooks(db: AsyncSession = Depends(get_session)):
-
-    notebooks = await db_list_public_notebook(db, limit=100)
     notebook_list = []
+    notebooks = await db_list_public_notebook(db, limit=100)
     if notebooks:
         for notebook in notebooks:
-            notebook_list.append(get_notebook_info(notebook))
+            # 获取关联数量（如果需要）
+            source_count = len(notebook.sources) if notebook.sources else 0
+            note_count = len(notebook.notes) if notebook.notes else 0
+            notebook_list.append({
+                'id': notebook.id,
+                'user_id': notebook.user_id,
+                'name': notebook.name,
+                'description': notebook.description,
+                'is_public': notebook.is_public,
+                'public_token': notebook.public_token,
+                'created_at': notebook.created_at,
+                'updated_at': notebook.updated_at,
+                'metadata': notebook.metadata_dict,
+                'source_count': source_count,
+                'note_count': note_count
+            })
 
     return success_response(message="获取公共笔记列表成功", data=notebook_list)
 

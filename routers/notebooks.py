@@ -124,8 +124,25 @@ async def handle_list_notebooks(user: User = Depends(get_current_user),
 async def handle_list_notebooks_with_stats(user: User = Depends(get_current_user),
                                            db: AsyncSession = Depends(get_session)):
 
-    notebook_stat = await db_list_notebook_with_stats(db, user.id)
-    return success_response(message="获取所有笔记状态成功", data=notebook_stat)
+    notebooks = await db_list_notebook_with_stats(db, user.id)
+    notebook_list = []
+    for notebook in notebooks:
+        source_count = len(notebook.sources) if notebook.sources else 0
+        note_count = len(notebook.notes) if notebook.notes else 0
+        notebook_list.append({
+            "id": notebook.id,
+            "user_id": notebook.user_id,
+            "name": notebook.name,
+            "description": notebook.description,
+            "is_public": notebook.is_public,
+            "public_token": notebook.public_token,
+            "created_at": notebook.created_at,
+            "updated_at": notebook.updated_at,
+            "metadata": notebook.metadata_dict,
+            "source_count": source_count,
+            "note_count": note_count
+        })
+    return success_response(message="获取所有笔记状态成功", data=notebook_list)
 
 
 @router.post("")

@@ -198,26 +198,23 @@ class OpenNotebook {
             this.setStatus('加载公开笔记本...');
 
             const [notebook, sources, notes] = await Promise.all([
-                fetch(`/public/notebooks/${token}`).then(r => {
+                fetch(`/public/notebooks/${token}`).then(async r => {
                     if (!r.ok) throw new Error('Failed to load notebook');
 
-                    const result = r.json()
-                    const data = result.data
-                    return r.data;
+                    const result = await r.json()
+                    return result.data;
                 }),
-                fetch(`/public/notebooks/${token}/sources`).then(r => {
+                fetch(`/public/notebooks/${token}/sources`).then(async r => {
                     if (!r.ok) throw new Error('Failed to load sources');
 
-                    const result = r.json()
-                    const data = result.data
-                    return r.data;
+                    const result = await r.json()
+                    return result.data;
                 }),
-                fetch(`/public/notebooks/${token}/notes`).then(r => {
+                fetch(`/public/notebooks/${token}/notes`).then(async r => {
                     if (!r.ok) throw new Error('Failed to load notes');
 
-                    const result = r.json()
-                    const data = result.data
-                    return r.data;
+                    const result = await r.json()
+                    return result.data;
                 })
             ]);
 

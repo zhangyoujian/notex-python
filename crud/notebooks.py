@@ -52,7 +52,7 @@ async def db_set_notebook_public(db: AsyncSession, notebook_id: str, is_public: 
 
 
 async def db_get_notebook_by_public_token(db: AsyncSession, token: str):
-    query = select(Notebook).where(Notebook.public_token == token and Notebook.is_public == 1)
+    query = select(Notebook).where((Notebook.public_token == token) & (Notebook.is_public == 1))
     result = await db.execute(query)
     return result.scalar_one_or_none()
 
@@ -75,25 +75,7 @@ async def db_list_notebook_with_stats(db: AsyncSession, user_id: int):
     )
     result = await db.execute(query)
     notebooks = result.scalars().all()
-    notebook_list = []
-    for notebook in notebooks:
-        source_count = len(notebook.sources) if notebook.sources else 0
-        note_count = len(notebook.notes) if notebook.notes else 0
-        notebook_list.append({
-            "id": notebook.id,
-            "user_id": notebook.user_id,
-            "name": notebook.name,
-            "description": notebook.description,
-            "is_public": notebook.is_public,
-            "public_token": notebook.public_token,
-            "created_at": notebook.created_at,
-            "updated_at": notebook.updated_at,
-            "metadata": notebook.metadata_dict,
-            "source_count": source_count,
-            "note_count": note_count
-        })
-    return notebook_list
-
+    return notebooks
 
 async def db_list_public_notebook(db: AsyncSession, skip: int = 0, limit: int = 20):
     """异步简化版本 - 推荐使用"""
@@ -103,6 +85,7 @@ async def db_list_public_notebook(db: AsyncSession, skip: int = 0, limit: int = 
         .join(Note, Note.notebook_id == Notebook.id)
         .where(Notebook.is_public == 1)
         .where(Note.type.in_(['infograph', 'ppt']))
+        .options(selectinload(Notebook.sources), selectinload(Notebook.notes))
         .order_by(Notebook.updated_at.desc())
         .offset(skip)
         .limit(limit)
@@ -111,28 +94,7 @@ async def db_list_public_notebook(db: AsyncSession, skip: int = 0, limit: int = 
     result = await db.execute(stmt)
     notebooks = result.scalars().all()
 
-    # 异步获取关联数量
-    notebook_list = []
-    for notebook in notebooks:
-        # 获取关联数量（如果需要）
-        source_count = len(notebook.sources) if notebook.sources else 0
-        note_count = len(notebook.notes) if notebook.notes else 0
-
-        notebook_list.append({
-            'id': notebook.id,
-            'user_id': notebook.user_id,
-            'name': notebook.name,
-            'description': notebook.description,
-            'is_public': notebook.is_public,
-            'public_token': notebook.public_token,
-            'created_at': notebook.created_at,
-            'updated_at': notebook.updated_at,
-            'metadata': notebook.metadata_dict,
-            'source_count': source_count,
-            'note_count': note_count
-        })
-
-    return notebook_list
+    return notebooks
 
 
 

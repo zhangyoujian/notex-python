@@ -40,8 +40,16 @@ class OpenAIService:
         try:
             data = await self._post("/chat/completions", payload)
             return data["choices"][0]["message"]["content"]
+        except httpx.HTTPStatusError as e:
+            # 尝试获取响应体
+            try:
+                body = await e.response.aread()
+                logger.error(f"OpenAI HTTP error {e.response.status_code}: {body.decode()}")
+            except:
+                logger.error(f"OpenAI HTTP error: {e}")
+            return f"Error: {e.response.status_code}"
         except Exception as e:
-            logger.error(f"OpenAI chat completion error: {e}")
+            logger.exception("OpenAI chat completion error")
             return f"Error generating text: {str(e)}"
 
     async def generate_chat(self, message: str, context_msg: List[Dict[str, str]]) -> str:
@@ -64,9 +72,17 @@ class OpenAIService:
         try:
             data = await self._post("/chat/completions", payload)
             return data["choices"][0]["message"]["content"]
+        except httpx.HTTPStatusError as e:
+            # 尝试获取响应体
+            try:
+                body = await e.response.aread()
+                logger.error(f"OpenAI HTTP error {e.response.status_code}: {body.decode()}")
+            except:
+                logger.error(f"OpenAI HTTP error: {e}")
+            return f"Error: {e.response.status_code}"
         except Exception as e:
-            logger.error(f"OpenAI chat completion error: {e}")
-            return f"Error generating chat response: {str(e)}"
+            logger.exception("OpenAI chat completion error")
+            return f"Error generating text: {str(e)}"
 
 
 openai_service = OpenAIService()
