@@ -1,14 +1,11 @@
 from fastapi import APIRouter, Depends
-from starlette import status
-
-from schemas.users import UserAuthResponse, UserInfoResponse, LoginRequest, RegisterRequest
-
 from service.database import get_session
 from crud.users import *
 from utils.response import success_response
 from utils.auth import get_current_user, get_current_admin
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
 
 def get_user_info(user: User):
     return {

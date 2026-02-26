@@ -1,11 +1,11 @@
 import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import configer
 from utils import logger
 from .chroma_vector import ChromaVector
 from .agent import NotexAgent
 from crud.source import db_list_sources
+
 
 class NotexServer:
 

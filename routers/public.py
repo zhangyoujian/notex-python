@@ -1,18 +1,10 @@
-from typing import List, Optional, Dict, Any
-from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status, Body
-import json
-
-from schemas.notebook import NotebookRequest, SourceRequest, NoteRequest
+from fastapi import APIRouter, Depends
 from service.database import get_session
-from models import Notebook, User, Note
 from crud.notebooks import *
 from crud.source import *
 from crud.note import *
-from config import configer
 from .notebooks import get_notebook_info, get_source_info, get_note_info
 
-from service.auth import get_current_user
 from utils.response import success_response
 
 router = APIRouter(prefix="/public", tags=["public"])

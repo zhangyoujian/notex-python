@@ -1,7 +1,7 @@
-from typing import Optional
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict
+
 
 class NotebookRequest(BaseModel):
     name: str

@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 from typing import Optional, List
 from sqlalchemy import Integer, Index, String, Enum, DateTime, ForeignKey, Text, Boolean

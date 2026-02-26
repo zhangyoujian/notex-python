@@ -1,9 +1,9 @@
 import os
 from datetime import datetime
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from routers import auth, api, files, notebooks, public, admin
 from config import configer
 from service.database import async_engine
@@ -78,6 +78,7 @@ async def server_root():
         return FileResponse(index_path, headers={"Cache-Control": "no-cache"})
     return HTMLResponse(content="<h1>Notex Frontend not found</h1>")
 
+
 @app.get("/login", response_class=HTMLResponse)
 async def get_login_page():
     index_path = os.path.join(frontend_path, "login.html")
@@ -85,12 +86,14 @@ async def get_login_page():
         return FileResponse(index_path, headers={"Cache-Control": "no-cache"})
     return HTMLResponse(content="<h1>Notex Frontend not found</h1>")
 
+
 @app.get("/register", response_class=HTMLResponse)
 async def get_register_page():
     index_path = os.path.join(frontend_path, "register.html")
     if os.path.exists(index_path):
         return FileResponse(index_path, headers={"Cache-Control": "no-cache"})
     return HTMLResponse(content="<h1>Notex Frontend not found</h1>")
+
 
 @app.get("/notes/{note_id}", response_class=HTMLResponse)
 async def server_note(note_id: str):
@@ -106,7 +109,6 @@ async def server_public(token: str):
     if os.path.exists(index_path):
         return FileResponse(index_path, headers={"Cache-Control": "no-cache"})
     return HTMLResponse(content="<h1>Notex Frontend not found</h1>")
-
 
 
 if __name__ == "__main__":

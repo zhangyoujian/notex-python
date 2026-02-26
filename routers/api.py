@@ -1,6 +1,5 @@
 import os.path
 import time
-import io
 import uuid
 from pathlib import Path
 

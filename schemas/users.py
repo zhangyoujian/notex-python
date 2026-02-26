@@ -3,10 +3,10 @@ from typing import Optional
 from pydantic import BaseModel, Field, ConfigDict
 
 
-
 class LoginRequest(BaseModel):
     email: str
     password: str
+
 
 class RegisterRequest(BaseModel):
     email: str

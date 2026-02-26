@@ -1,6 +1,5 @@
 from typing import Optional
-from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel
 
 
 class ChatRequest(BaseModel):

@@ -4,7 +4,6 @@ from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from starlette import status
-from utils import logger
 
 # 开发模式：返回详细错误信息
 # 生产模式：返回简化错误信息
