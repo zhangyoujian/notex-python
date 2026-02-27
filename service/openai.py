@@ -1,3 +1,4 @@
+from fastapi import HTTPException, status
 from typing import List, Dict, Any, Optional
 import httpx
 from config import configer
@@ -27,7 +28,7 @@ class OpenAIService:
 
     async def generate_text(self, prompt: str) -> str:
         if not self.api_key:
-            return "Error: OPENAI_API_KEY not set."
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="OPENAI_API_KEY not set")
 
         payload = {
             "model": self.model,
@@ -45,16 +46,17 @@ class OpenAIService:
             try:
                 body = await e.response.aread()
                 logger.error(f"OpenAI HTTP error {e.response.status_code}: {body.decode()}")
-            except:
-                logger.error(f"OpenAI HTTP error: {e}")
-            return f"Error: {e.response.status_code}"
+            except Exception as e:
+                logger.error(f"OpenAI HTTP error: {str(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"OpenAI HTTP error: {str(e)}")
         except Exception as e:
-            logger.exception("OpenAI chat completion error")
-            return f"Error generating text: {str(e)}"
+            logger.error(f"OpenAI chat completion error: {str(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail="OpenAI chat completion error, please try again")
 
     async def generate_chat(self, message: str, context_msg: List[Dict[str, str]]) -> str:
         if not self.api_key:
-            return "Error: OPENAI_API_KEY not set."
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="OPENAI_API_KEY not set")
 
         # 构建系统提示词
         messages = [{"role": "system", "content": "You are a helpful assistant."}]
@@ -77,12 +79,13 @@ class OpenAIService:
             try:
                 body = await e.response.aread()
                 logger.error(f"OpenAI HTTP error {e.response.status_code}: {body.decode()}")
-            except:
+            except Exception as e:
                 logger.error(f"OpenAI HTTP error: {e}")
-            return f"Error: {e.response.status_code}"
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"OpenAI HTTP error: {e}")
         except Exception as e:
-            logger.exception("OpenAI chat completion error")
-            return f"Error generating text: {str(e)}"
+            logger.error(f"OpenAI chat completion error: {str(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail="OpenAI chat completion error, please try again")
 
 
 openai_service = OpenAIService()
