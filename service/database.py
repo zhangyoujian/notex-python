@@ -1,9 +1,11 @@
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession, create_async_engine
 from config import configer
 
+_mysql_url = f"mysql+aiomysql://{configer.db_user}:{configer.db_password}@{configer.db_host}:{configer.db_port}/notex?charset=utf8mb4"
+
 # 创建异步引擎
 async_engine = create_async_engine(
-    url=configer.mysql_url,
+    url=_mysql_url,
     pool_pre_ping=True,             # 保持启用，但需配合回收
     pool_recycle=3600,              # 回收超过 1 小时的连接（应小于 MySQL 的 wait_timeout）
     echo=False,                     # 可选：输出SQL日志

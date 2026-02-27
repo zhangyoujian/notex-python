@@ -106,18 +106,7 @@ OPENAI_MODEL=gpt-4o-mini
 EMBEDDING_MODEL=text-embedding-3-small
 ```
 
-#### 方式二：使用 Ollama（本地免费）
-
-```bash
-# 先安装 Ollama: https://ollama.com
-# 拉取模型: ollama pull llama3.2
-
-# .env
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2
-```
-
-#### 方式三：使用国产模型
+#### 方式二：使用国产模型
 
 ```bash
 # DeepSeek 示例
@@ -135,20 +124,31 @@ OPENAI_MODEL=qwen-turbo
 
 ```bash
 # 使用 MySQL
-MYSQL_URL=mysql+aiomysql://user:password@localhost:3306/notex
+DB_ROOT_PASSWORD=NotexRoot324!
+DB_NAME=notex
+DB_USER=notex_user
+DB_PASSWORD=123456
+DB_PORT=3306
+DB_HOST=mysql
 
-# 或使用 SQLite（默认）
-# 不设置 MYSQL_URL 则使用 SQLite
 ```
 
 ### 启动服务
 
+#### 方式1：命令行启动
 ```bash
-# 启动服务器
-python main.py
 
-# 或使用 uvicorn
-uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+# 启动服务器
+python3 -m main
+
+```
+
+#### 方式2：docker启动
+```bash
+
+cd notex-python
+docker-compose up -d
+
 ```
 
 访问 [http://localhost:8080](http://localhost:8080)

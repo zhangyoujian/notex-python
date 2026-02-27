@@ -67,12 +67,12 @@ class AsyncRedisCache:
     异步 Redis 缓存实现
     """
     def __init__(self,
-                 redis_url: str = configer.redis_url,
+                 redis_port: int = configer.redis_port,
                  default_ttl: int = 3600,
                  prefix: str = "notex",
                  encoding: str = "utf-8",
                  enable_stats: bool = True):
-        self.redis_url = redis_url
+        self.redis_url = f"redis:localhost:{redis_port}"
         self.default_ttl = default_ttl
         self.prefix = prefix
         self.enable_stats = enable_stats

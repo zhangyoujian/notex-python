@@ -52,19 +52,20 @@ class Config:
 
     google_api_key: Optional[str] = None
 
-    ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "llama3.2"
-
     # 向量存储设置
     vector_store_type: str = "chroma"
     vector_store_path: str = "./data/chroma_db"
     markitdown_cmd: str = "markitdown"
 
     # 数据库存储设置
-    mysql_url: Optional[str] = None
+    db_host: Optional[str] = "mysql"
+    db_name: Optional[str] = "notex"
+    db_user: Optional[str] = "notex_user"
+    db_password: Optional[str] = "123456"
+    db_port: int = 3306
 
     # 缓存存储设置
-    redis_url: Optional[str] = None
+    redis_port: int = 6379
 
     # 应用设置
     max_sources: int = 5
@@ -79,9 +80,6 @@ class Config:
     # 上传文件路径
     upload_path: str = "./data/uploads"
 
-    # AES 加密算法依赖的秘钥
-    aes_key: Optional[str] = None
-
     # 播客生成
     enable_podcast: bool = True
     podcast_voice: str = "alloy"
@@ -92,14 +90,6 @@ class Config:
     # 演示设置
     allow_delete: bool = True
     allow_multiple_notes_of_same_type: bool = True
-
-    # LangSmith跟踪（可选）
-    langchain_api_key: Optional[str] = None
-    langchain_project: str = "open-notebook"
-
-    # 以下字段在验证时使用，但原类中未定义，若需要可添加
-    supabase_url: Optional[str] = None
-    supabase_key: Optional[str] = None
 
     @property
     def is_ollama(self) -> bool:
@@ -135,15 +125,18 @@ def load_config() -> Config:
 
     conf.google_api_key = _get_env_str("GOOGLE_API_KEY", conf.google_api_key)
 
-    conf.ollama_base_url = _get_env_str("OLLAMA_BASE_URL", conf.ollama_base_url)
-    conf.ollama_model = _get_env_str("OLLAMA_MODEL", conf.ollama_model)
 
     conf.vector_store_type = _get_env_str("VECTOR_STORE_TYPE", conf.vector_store_type)
     conf.vector_store_path = _get_env_str("VECTOR_STORE_PATH", conf.vector_store_path)
     conf.markitdown_cmd = _get_env_str("MARKITDOWN_CMD", conf.markitdown_cmd)
 
-    conf.mysql_url = _get_env_str("MYSQL_URL", conf.mysql_url)
-    conf.redis_url = _get_env_str("REDIS_URL", conf.redis_url)
+    conf.db_name = _get_env_str("DB_NAME", conf.db_name)
+    conf.db_host = _get_env_str("DB_HOST", conf.db_host)
+    conf.db_user = _get_env_str("DB_USER", conf.db_user)
+    conf.db_password = _get_env_str("DB_PASSWORD", conf.db_password)
+    conf.db_port = _get_env_int("DB_PORT", conf.db_port)
+
+    conf.redis_port = _get_env_int("REDIS_PORT", conf.redis_port)
 
     conf.max_sources = _get_env_int("MAX_SOURCES", conf.max_sources)
     conf.max_context_length = _get_env_int("MAX_CONTEXT_LENGTH", conf.max_context_length)
@@ -155,8 +148,6 @@ def load_config() -> Config:
 
     conf.upload_path = _get_env_str("UPLOAD_PATH", conf.upload_path)
 
-    conf.aes_key = _get_env_str("AES_KEY", conf.aes_key)
-
     conf.enable_podcast = _get_env_bool("ENABLE_PODCAST", conf.enable_podcast)
     conf.podcast_voice = _get_env_str("PODCAST_VOICE", conf.podcast_voice)
 
@@ -166,13 +157,6 @@ def load_config() -> Config:
     conf.allow_multiple_notes_of_same_type = _get_env_bool(
         "ALLOW_MULTIPLE_NOTES_OF_SAME_TYPE", conf.allow_multiple_notes_of_same_type
     )
-
-    conf.langchain_api_key = _get_env_str("LANGCHAIN_API_KEY", conf.langchain_api_key)
-    conf.langchain_project = _get_env_str("LANGCHAIN_PROJECT", conf.langchain_project)
-
-    # 额外读取 supabase 相关变量（用于验证）
-    conf.supabase_url = _get_env_str("SUPABASE_URL", conf.supabase_url)
-    conf.supabase_key = _get_env_str("SUPABASE_KEY", conf.supabase_key)
 
     # 验证配置
     validate_config(conf)
@@ -188,10 +172,7 @@ def validate_config(config: Config) -> None:
     if not has_openai and not has_ollama:
         raise ValueError("必须设置 OPENAI_API_KEY 或 OLLAMA_BASE_URL")
 
-    if config.vector_store_type == "supabase":
-        if not config.supabase_url or not config.supabase_key:
-            raise ValueError("SUPABASE_URL 和 SUPABASE_KEY 对于 supabase 向量存储是必需的")
-    elif config.vector_store_type not in ["chroma", "memory"]:
+    if config.vector_store_type not in ["chroma", "memory"]:
         raise ValueError(f"未知的向量存储类型: {config.vector_store_type}")
 
 
