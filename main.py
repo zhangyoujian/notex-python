@@ -60,7 +60,7 @@ app = FastAPI(
 # 注册异常处理器
 register_exception_handlers(app)
 
-app.middleware("http")(audit_middleware_lite)
+# app.middleware("http")(audit_middleware_lite)
 
 app.add_middleware(
     CORSMiddleware,
