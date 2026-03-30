@@ -67,12 +67,26 @@ class AsyncRedisCache:
     异步 Redis 缓存实现
     """
     def __init__(self,
-                 redis_port: int = configer.redis_port,
+                 redis_url: str = None,
+                 redis_host: str = None,
+                 redis_port: int = None,
+                 redis_password: str = None,
                  default_ttl: int = 3600,
-                 prefix: str = "notex",
+                 prefix: str = "chat",
                  encoding: str = "utf-8",
                  enable_stats: bool = True):
-        self.redis_url = f"redis:localhost:{redis_port}"
+        # 优先使用完整 REDIS_URL（Railway 等平台直接提供，含认证信息）
+        url = redis_url or getattr(configer, "redis_url", None)
+        if url and url.strip():
+            self.redis_url = url.strip()
+        else:
+            host = redis_host if redis_host is not None else getattr(configer, "redis_host", "localhost")
+            port = redis_port if redis_port is not None else getattr(configer, "redis_port", 6379)
+            password = redis_password if redis_password is not None else getattr(configer, "redis_password", None)
+            if password:
+                self.redis_url = f"redis://:{password}@{host}:{port}"
+            else:
+                self.redis_url = f"redis://{host}:{port}"
         self.default_ttl = default_ttl
         self.prefix = prefix
         self.enable_stats = enable_stats
@@ -181,8 +195,8 @@ class AsyncRedisCache:
         Returns: bool: 是否清除成功
         """
         try:
-            # 获取所有属于本缓存的键
-            pattern = f"{self.prefix}:*" if self.prefix else "*"
+            # 匹配本 prefix 下所有键（invalidate_pattern 内部会 _build_key，故传 "*" 得到 prefix:*）
+            pattern = "*"
             deleted_count = await self.invalidate_pattern(pattern)
             # 重置统计信息
             if self.enable_stats:
@@ -339,15 +353,12 @@ class AsyncRedisCache:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """上下文管理器出口"""
-        self.close()
+        """上下文管理器出口。异步关闭请显式 await self.close()。"""
+        return None
 
     def __del__(self):
-        """析构函数"""
-        try:
-            self.close()
-        except Exception:
-            pass  # 忽略析构时的错误
+        """析构函数。不在析构中调用异步 close()，请在使用完毕后显式 await self.close()。"""
+        pass
 
 
 def async_cached(

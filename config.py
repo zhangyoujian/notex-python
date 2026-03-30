@@ -65,7 +65,10 @@ class Config:
     db_port: int = 3306
 
     # 缓存存储设置
+    redis_url: Optional[str] = None
+    redis_host: str = "localhost"
     redis_port: int = 6379
+    redis_password: Optional[str] = None
 
     # 应用设置
     max_sources: int = 5
@@ -125,18 +128,21 @@ def load_config() -> Config:
 
     conf.google_api_key = _get_env_str("GOOGLE_API_KEY", conf.google_api_key)
 
-
     conf.vector_store_type = _get_env_str("VECTOR_STORE_TYPE", conf.vector_store_type)
     conf.vector_store_path = _get_env_str("VECTOR_STORE_PATH", conf.vector_store_path)
     conf.markitdown_cmd = _get_env_str("MARKITDOWN_CMD", conf.markitdown_cmd)
 
-    conf.db_name = _get_env_str("DB_NAME", conf.db_name)
-    conf.db_host = _get_env_str("DB_HOST", conf.db_host)
-    conf.db_user = _get_env_str("DB_USER", conf.db_user)
-    conf.db_password = _get_env_str("DB_PASSWORD", conf.db_password)
-    conf.db_port = _get_env_int("DB_PORT", conf.db_port)
+    conf.db_name = _get_env_str("MYSQL_DATABASE", conf.db_name)
+    conf.db_host = _get_env_str("MYSQL_HOST", conf.db_host)
+    conf.db_user = _get_env_str("MYSQL_USER", conf.db_user)
+    conf.db_password = _get_env_str("MYSQL_PASSWORD", conf.db_password)
+    conf.db_port = _get_env_int("MYSQL_PORT", conf.db_port)
 
-    conf.redis_port = _get_env_int("REDIS_PORT", conf.redis_port)
+    conf.redis_url = os.getenv("REDIS_URL") or None
+    if not conf.redis_url:
+        conf.redis_host = _get_env_str("REDIS_HOST", conf.redis_host)
+        conf.redis_port = _get_env_int("REDIS_PORT", conf.redis_port)
+        conf.redis_password = _get_env_str("REDIS_PASSWORD", "") or None
 
     conf.max_sources = _get_env_int("MAX_SOURCES", conf.max_sources)
     conf.max_context_length = _get_env_int("MAX_CONTEXT_LENGTH", conf.max_context_length)

@@ -11,6 +11,7 @@ from models.base import Base
 from contextlib import asynccontextmanager
 from utils.exception_handlers import register_exception_handlers
 from utils import logger
+from utils.redis_cache import AsyncRedisCache
 
 VERSION = "1.0.0"
 
@@ -28,6 +29,19 @@ async def audit_middleware_lite(request: Request, call_next):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 启动时：尽量完成 Redis 清理、建表、初始化；任一步失败也不阻塞应用启动，保证能响应请求
+    cache = AsyncRedisCache(enable_stats=False)
+    try:
+        await cache.clear()
+        logger.info("Redis cache cleared on startup")
+    except Exception as e:
+        logger.warning("Redis cache clear on startup failed: %s", e)
+    finally:
+        try:
+            await cache.close()
+        except Exception:
+            pass
+
     # 启动时：创建表
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
